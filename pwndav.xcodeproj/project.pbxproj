@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		F6440A0223DF3ECC007FA943 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = F6440A0123DF3ECC007FA943 /* main.c */; };
+		F6440A1023DF4049007FA943 /* webdav_common.c in Sources */ = {isa = PBXBuildFile; fileRef = F6440A0F23DF4049007FA943 /* webdav_common.c */; };
+		F6440A2723DF549A007FA943 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = F6440A2623DF549A007FA943 /* main.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -20,15 +22,36 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		F6440A2223DF549A007FA943 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		F64409FE23DF3ECC007FA943 /* pwndav */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pwndav; sourceTree = BUILT_PRODUCTS_DIR; };
+		F64409FE23DF3ECC007FA943 /* inspector */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = inspector; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6440A0123DF3ECC007FA943 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		F6440A0D23DF4012007FA943 /* webdav.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = webdav.h; sourceTree = "<group>"; };
+		F6440A0E23DF4049007FA943 /* webdav_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = webdav_common.h; sourceTree = "<group>"; };
+		F6440A0F23DF4049007FA943 /* webdav_common.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = webdav_common.c; sourceTree = "<group>"; };
+		F6440A2423DF549A007FA943 /* pwndav */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pwndav; sourceTree = BUILT_PRODUCTS_DIR; };
+		F6440A2623DF549A007FA943 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		F64409FB23DF3ECC007FA943 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F6440A2123DF549A007FA943 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -41,7 +64,9 @@
 		F64409F523DF3ECC007FA943 = {
 			isa = PBXGroup;
 			children = (
-				F6440A0023DF3ECC007FA943 /* pwndav */,
+				F6440A2523DF549A007FA943 /* pwndav */,
+				F6440A0023DF3ECC007FA943 /* inspector */,
+				F6440A1123DF4E89007FA943 /* webdav */,
 				F64409FF23DF3ECC007FA943 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -49,15 +74,34 @@
 		F64409FF23DF3ECC007FA943 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F64409FE23DF3ECC007FA943 /* pwndav */,
+				F64409FE23DF3ECC007FA943 /* inspector */,
+				F6440A2423DF549A007FA943 /* pwndav */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		F6440A0023DF3ECC007FA943 /* pwndav */ = {
+		F6440A0023DF3ECC007FA943 /* inspector */ = {
 			isa = PBXGroup;
 			children = (
 				F6440A0123DF3ECC007FA943 /* main.c */,
+			);
+			path = inspector;
+			sourceTree = "<group>";
+		};
+		F6440A1123DF4E89007FA943 /* webdav */ = {
+			isa = PBXGroup;
+			children = (
+				F6440A0D23DF4012007FA943 /* webdav.h */,
+				F6440A0E23DF4049007FA943 /* webdav_common.h */,
+				F6440A0F23DF4049007FA943 /* webdav_common.c */,
+			);
+			path = webdav;
+			sourceTree = "<group>";
+		};
+		F6440A2523DF549A007FA943 /* pwndav */ = {
+			isa = PBXGroup;
+			children = (
+				F6440A2623DF549A007FA943 /* main.c */,
 			);
 			path = pwndav;
 			sourceTree = "<group>";
@@ -65,9 +109,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		F64409FD23DF3ECC007FA943 /* pwndav */ = {
+		F64409FD23DF3ECC007FA943 /* inspector */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F6440A0523DF3ECC007FA943 /* Build configuration list for PBXNativeTarget "pwndav" */;
+			buildConfigurationList = F6440A0523DF3ECC007FA943 /* Build configuration list for PBXNativeTarget "inspector" */;
 			buildPhases = (
 				F64409FA23DF3ECC007FA943 /* Sources */,
 				F64409FB23DF3ECC007FA943 /* Frameworks */,
@@ -77,9 +121,26 @@
 			);
 			dependencies = (
 			);
+			name = inspector;
+			productName = pwndav;
+			productReference = F64409FE23DF3ECC007FA943 /* inspector */;
+			productType = "com.apple.product-type.tool";
+		};
+		F6440A2323DF549A007FA943 /* pwndav */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F6440A2823DF549A007FA943 /* Build configuration list for PBXNativeTarget "pwndav" */;
+			buildPhases = (
+				F6440A2023DF549A007FA943 /* Sources */,
+				F6440A2123DF549A007FA943 /* Frameworks */,
+				F6440A2223DF549A007FA943 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
 			name = pwndav;
 			productName = pwndav;
-			productReference = F64409FE23DF3ECC007FA943 /* pwndav */;
+			productReference = F6440A2423DF549A007FA943 /* pwndav */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -92,6 +153,9 @@
 				ORGANIZATIONNAME = "Sreejith Krishnan R";
 				TargetAttributes = {
 					F64409FD23DF3ECC007FA943 = {
+						CreatedOnToolsVersion = 11.3.1;
+					};
+					F6440A2323DF549A007FA943 = {
 						CreatedOnToolsVersion = 11.3.1;
 					};
 				};
@@ -109,7 +173,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F64409FD23DF3ECC007FA943 /* pwndav */,
+				F64409FD23DF3ECC007FA943 /* inspector */,
+				F6440A2323DF549A007FA943 /* pwndav */,
 			);
 		};
 /* End PBXProject section */
@@ -120,6 +185,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				F6440A0223DF3ECC007FA943 /* main.c in Sources */,
+				F6440A1023DF4049007FA943 /* webdav_common.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F6440A2023DF549A007FA943 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F6440A2723DF549A007FA943 /* main.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,6 +325,22 @@
 			};
 			name = Release;
 		};
+		F6440A2923DF549A007FA943 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		F6440A2A23DF549A007FA943 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -263,11 +353,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F6440A0523DF3ECC007FA943 /* Build configuration list for PBXNativeTarget "pwndav" */ = {
+		F6440A0523DF3ECC007FA943 /* Build configuration list for PBXNativeTarget "inspector" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F6440A0623DF3ECC007FA943 /* Debug */,
 				F6440A0723DF3ECC007FA943 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F6440A2823DF549A007FA943 /* Build configuration list for PBXNativeTarget "pwndav" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F6440A2923DF549A007FA943 /* Debug */,
+				F6440A2A23DF549A007FA943 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
