@@ -24,7 +24,7 @@
 
 #include "webdav_common.h"
 
-#define TEMP_DIR _PATH_TMP ".pwndav.XXXXXX"
+#define TEMP_DIR _PATH_TMP ".pwndav"
 #define ROOT_ID CreateOpaqueID(1, 1)
 #define TARGET_NAME "pwndav"
 #define TARGET_ID CreateOpaqueID(1, 2)
@@ -340,9 +340,16 @@ int main(int argc, char** argv) {
   }
   
   int error;
+  char id[NAME_MAX] = "XXXXXX";
+  if (mktemp(id) == NULL) {
+    printf("cannot create id, error: %d \n", errno);
+    error = errno;
+    goto done;
+  }
   
-  char temp_dir[PATH_MAX] = TEMP_DIR;
-  if (mkdtemp(temp_dir) == NULL) {
+  char temp_dir[PATH_MAX];
+  snprintf(temp_dir, sizeof(temp_dir), "%s/%s", TEMP_DIR, id);
+  if (mkdir(temp_dir, 0700) != 0) {
     printf("cannot create temporary working directory, error: %d \n", errno);
     error = errno;
     goto done;
@@ -414,10 +421,6 @@ int main(int argc, char** argv) {
   }
   
 done:
-  if (remove(args.listen_addr.sun_path) != 0) {
-    printf("cannot remove temporary uds socket file %s, error = %d \n", args.listen_addr.sun_path, errno);
-  }
-  
   if (remove(temp_dir) != 0) {
     printf("cannot remove mount directory %s, error = %d \n", mnt_dir, errno);
   }
