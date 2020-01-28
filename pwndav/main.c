@@ -196,10 +196,18 @@ int handle_read(void *ctx, struct webdav_request_read* request, char** data, siz
 }
 
 int handle_writeseq(void *ctx, struct webdav_request_writeseq* request, struct webdav_reply_writeseq* reply) {
+  if (request->obj_id == TARGET_ID) {
+    return 0;
+  }
+  
   return EINVAL;
 }
 
 int handle_fsync(void *ctx, struct webdav_request_fsync* request) {
+  if (request->obj_id == TARGET_ID) {
+    return 0;
+  }
+  
   return EINVAL;
 }
 
