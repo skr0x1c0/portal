@@ -222,7 +222,7 @@ int handle_statfs(void *ctx, struct webdav_request_statfs* request, struct webda
 }
 
 int handle_unmount(void *ctx, struct webdav_request_unmount* request) {
-  return EINVAL;
+  return 0;
 }
 
 int handle_invalcaches(void *ctx, struct webdav_request_invalcaches* request) {
