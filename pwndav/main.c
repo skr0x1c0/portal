@@ -273,12 +273,12 @@ size_t setup_root_fd(int fd) {
   dirent[0].d_type = DT_DIR;
   dirent[0].d_reclen = sizeof(struct webdav_dirent);
   
-  dirent[0].d_ino = WEBDAV_ROOTPARENTFILEID;
-  dirent[0].d_name[0] = '.';
-  dirent[0].d_name[1] = '.';
-  dirent[0].d_namlen = 2;
-  dirent[0].d_type = DT_DIR;
-  dirent[0].d_reclen = sizeof(struct webdav_dirent);
+  dirent[1].d_ino = WEBDAV_ROOTPARENTFILEID;
+  dirent[1].d_name[0] = '.';
+  dirent[1].d_name[1] = '.';
+  dirent[1].d_namlen = 2;
+  dirent[1].d_type = DT_DIR;
+  dirent[1].d_reclen = sizeof(struct webdav_dirent);
   
   return write(fd, &dirent, sizeof(dirent));
 }

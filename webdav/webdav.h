@@ -542,6 +542,7 @@ union webdav_reply
 // Once __DARWIN_64_BIT_INO_T is set to 1 for both user and kernel space, we
 // can get rid of webdav_dirent and just use dirent exclusively.
 //
+# pragma pack(push, 1)
 struct webdav_dirent {
     webdav_ino_t d_ino;      /* file number of entry */
     __uint16_t d_reclen;    /* length of this record */
@@ -549,5 +550,6 @@ struct webdav_dirent {
     __uint8_t  d_namlen;    /* length of string in d_name */
     char d_name[__DARWIN_MAXNAMLEN + 1];  /* name must be no longer than this */
 };
+#pragma pack(pop)
 
 #endif /* webdav_h */
