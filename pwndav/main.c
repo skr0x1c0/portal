@@ -105,11 +105,21 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
     reply->pid = getpid();
     return 0;
   }
+  
+  if (request->obj_id == TARGET_ID) {
+    if (associate_cache_file(request->ref, handler_ctx->destination_fd) != 0) {
+      return errno;
+    }
+    
+    reply->pid = getpid();
+    return 0;
+  }
+  
   return EINVAL;
 }
 
 int handle_close(void *ctx, struct webdav_request_close* request) {
-  if (request->obj_id == ROOT_ID) {
+  if (request->obj_id == ROOT_ID || request->obj_id == TARGET_ID) {
     return 0;
   }
   
