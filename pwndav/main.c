@@ -15,6 +15,8 @@
 #include <paths.h>
 #include <fcntl.h>
 
+#include <sys/sysctl.h>
+#include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/errno.h>
 #include <sys/un.h>
@@ -30,6 +32,7 @@ struct handler_ctx {
   char destination[PATH_MAX];
   
   int destination_fd;
+  int root_fd;
 };
 
 int handle_lookup(void *ctx, struct webdav_request_lookup* request, struct webdav_reply_lookup* reply) {
@@ -69,7 +72,38 @@ int handle_create(void *ctx, struct webdav_request_create *request, struct webda
   return EINVAL;
 }
 
+int associate_cache_file(int ref, int fd) {
+  struct vfsconf conf;
+  bzero(&conf, sizeof(conf));
+  getvfsbyname("webdav", &conf);
+  
+  int mib[5];
+  
+  mib[0] = CTL_VFS;
+  mib[1] = conf.vfc_typenum;
+  mib[2] = WEBDAV_ASSOCIATECACHEFILE_SYSCTL;
+  mib[3] = ref;
+  mib[4] = fd;
+  
+  if (sysctl(mib, 5, NULL, NULL, NULL, 0) != 0) {
+    printf("associate cache file sysctl failed, error: %d \n", errno);
+    return -1;
+  }
+  
+  return 0;
+}
+
 int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_reply_open* reply) {
+  struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
+  
+  if (request->obj_id == ROOT_ID) {
+    if (associate_cache_file(request->ref, handler_ctx->root_fd) != 0) {
+      return errno;
+    }
+    
+    reply->pid = getpid();
+    return 0;
+  }
   return EINVAL;
 }
 
@@ -264,6 +298,15 @@ int main(int argc, char** argv) {
   char mnt_dir[PATH_MAX];
   bzero(mnt_dir, sizeof(mnt_dir));
   snprintf(mnt_dir, sizeof(mnt_dir), "%s.mnt.%s", _PATH_TMP, id);
+  
+  char root_cache_path[PATH_MAX];
+  bzero(root_cache_path, sizeof(root_cache_path));
+  snprintf(root_cache_path, sizeof(root_cache_path), "%s.root.cache.%s", _PATH_TMP, id);
+  handler_ctx.root_fd = open(root_cache_path, O_CREAT | O_RDWR);
+  if (handler_ctx.root_fd < 0) {
+    printf("cannot create root cache, error: %d \n", errno);
+    return errno;
+  }
   
   if (mkdir(mnt_dir, 0700) != 0) {
     printf("cannot create mount directory %s, error = %d \n", mnt_dir, errno);

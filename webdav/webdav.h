@@ -499,5 +499,11 @@ union webdav_reply
 #define WEBDAV_DUMP_COOKIES    29
 #define WEBDAV_CLEAR_COOKIES  30
 
+/*
+ * If name[0] is WEBDAV_ASSOCIATECACHEFILE_SYSCTL, then
+ *    name[1] = a pointer to a struct open_associatecachefile
+ *    name[2] = fd of cache file
+ */
+#define WEBDAV_ASSOCIATECACHEFILE_SYSCTL   1
 
 #endif /* webdav_h */
