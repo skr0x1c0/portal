@@ -242,7 +242,6 @@ int handle_statfs(void *ctx, struct webdav_request_statfs* request, struct webda
 }
 
 int handle_unmount(void *ctx, struct webdav_request_unmount* request) {
-  pthread_exit(NULL);
   return 0;
 }
 
@@ -447,6 +446,12 @@ int main(int argc, char** argv) {
   
   if (cp_result != 0) {
     printf("cannot cp, error: %d \n", errno);
+    error = errno;
+    goto done;
+  }
+  
+  if (unmount(mnt_dir, MNT_FORCE) != 0) {
+    printf("cannot unmount, error: %d \n", errno);
     error = errno;
     goto done;
   }

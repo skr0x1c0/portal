@@ -7,6 +7,7 @@
 //
 
 #include <stdio.h>
+#include <pthread.h>
 
 #include <sys/mount.h>
 #include <sys/un.h>
@@ -256,6 +257,10 @@ int webdav_kext_handle(struct webdav_kext_handler* router, int socket) {
   if (error != 0) {
     printf("error writing kext request: %d \n", error);
     goto done;
+  }
+  
+  if (operation == WEBDAV_UNMOUNT) {
+    pthread_exit(NULL);
   }
   
 done:
