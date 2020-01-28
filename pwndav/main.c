@@ -108,6 +108,10 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
 }
 
 int handle_close(void *ctx, struct webdav_request_close* request) {
+  if (request->obj_id == ROOT_ID) {
+    return 0;
+  }
+  
   return EINVAL;
 }
 
@@ -204,7 +208,7 @@ int handle_rmdir(void *ctx, struct webdav_request_rmdir* request) {
   return EINVAL;
 }
 
-int handle_readdir(void *ctx, struct webdav_request_readdir* request) {  
+int handle_readdir(void *ctx, struct webdav_request_readdir* request) {
   if (request->obj_id == ROOT_ID) {
     return 0;
   }
