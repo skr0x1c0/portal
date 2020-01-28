@@ -14,6 +14,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/dirent.h>
+
+/* special file ID values */
+#define WEBDAV_ROOTPARENTFILEID 2
+#define WEBDAV_ROOTFILEID 3
 
 /* Webdav file type constants */
 #define WEBDAV_FILE_TYPE    1
@@ -505,5 +510,44 @@ union webdav_reply
  *    name[2] = fd of cache file
  */
 #define WEBDAV_ASSOCIATECACHEFILE_SYSCTL   1
+
+// XXX Dependency on __DARWIN_64_BIT_INO_T
+// struct dirent is in flux right now because __DARWIN_64_BIT_INO_T is set to 1 for user space,
+// but set to zero for kernel space.
+// So user space sees dirent as:
+//
+// struct dirent {
+// __uint64_t  d_ino;      /* file number of entry */
+// __uint64_t  d_seekoff;  /* seek offset (optional, used by servers) */
+// __uint16_t  d_reclen;   /* length of this record */
+// __uint16_t  d_namlen;   /* length of string in d_name */
+// __uint8_t   d_type;     /* file type, see below */
+// char      d_name[__DARWIN_MAXPATHLEN]; /* entry name (up to MAXPATHLEN bytes) */
+// };
+//
+// But kernel space sees dirent like this:
+//
+// struct dirent {
+//  ino_t d_ino;      /* file number of entry */
+//  __uint16_t d_reclen;    /* length of this record */
+//  __uint8_t  d_type;     /* file type, see below */
+//  __uint8_t  d_namlen;    /* length of string in d_name */
+//  char d_name[__DARWIN_MAXNAMLEN + 1];  /* name must be no longer than this */
+// };
+//
+// So until kernel and user space sees the same dirent, we need to use our
+// own type since we pass a struct dirent from user to kernel space when we
+// process readdir vnop.
+//
+// Once __DARWIN_64_BIT_INO_T is set to 1 for both user and kernel space, we
+// can get rid of webdav_dirent and just use dirent exclusively.
+//
+struct webdav_dirent {
+    webdav_ino_t d_ino;      /* file number of entry */
+    __uint16_t d_reclen;    /* length of this record */
+    __uint8_t  d_type;     /* file type, see below */
+    __uint8_t  d_namlen;    /* length of string in d_name */
+    char d_name[__DARWIN_MAXNAMLEN + 1];  /* name must be no longer than this */
+};
 
 #endif /* webdav_h */

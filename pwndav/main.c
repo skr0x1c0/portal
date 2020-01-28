@@ -204,7 +204,11 @@ int handle_rmdir(void *ctx, struct webdav_request_rmdir* request) {
   return EINVAL;
 }
 
-int handle_readdir(void *ctx, struct webdav_request_readdir* request) {
+int handle_readdir(void *ctx, struct webdav_request_readdir* request) {  
+  if (request->obj_id == ROOT_ID) {
+    return 0;
+  }
+  
   return EINVAL;
 }
 
@@ -253,6 +257,26 @@ int handler(void* ctx, int socket) {
   };
   
   return webdav_kext_handle(&router, socket);
+}
+
+size_t setup_root_fd(int fd) {
+  struct webdav_dirent dirent[2];
+  bzero(&dirent, sizeof(dirent));
+  
+  dirent[0].d_ino = WEBDAV_ROOTFILEID;
+  dirent[0].d_name[0] = '.';
+  dirent[0].d_namlen = 1;
+  dirent[0].d_type = DT_DIR;
+  dirent[0].d_reclen = sizeof(struct webdav_dirent);
+  
+  dirent[0].d_ino = WEBDAV_ROOTPARENTFILEID;
+  dirent[0].d_name[0] = '.';
+  dirent[0].d_name[1] = '.';
+  dirent[0].d_namlen = 2;
+  dirent[0].d_type = DT_DIR;
+  dirent[0].d_reclen = sizeof(struct webdav_dirent);
+  
+  return write(fd, &dirent, sizeof(dirent));
 }
 
 int main(int argc, char** argv) {
@@ -305,6 +329,11 @@ int main(int argc, char** argv) {
   handler_ctx.root_fd = open(root_cache_path, O_CREAT | O_RDWR);
   if (handler_ctx.root_fd < 0) {
     printf("cannot create root cache, error: %d \n", errno);
+    return errno;
+  }
+  
+  if (setup_root_fd(handler_ctx.root_fd) <= 0) {
+    printf("cannot setup root cache, error: %d \n", errno);
     return errno;
   }
   
