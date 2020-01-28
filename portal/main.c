@@ -463,6 +463,18 @@ int main(int argc, char** argv) {
   }
   
 done:
+  if (remove(mnt_dir) != 0) {
+    printf("cannot remove mount directory %s, error: %d \n", mnt_dir, errno);
+  }
+  
+  if (remove(root_cache_path) != 0) {
+    printf("cannot remove root cache path %s, error: %d \n", root_cache_path, errno);
+  }
+  
+  if (remove(args.listen_addr.sun_path) != 0) {
+    printf("cannot remove socket path %s, error: %d \n", args.listen_addr.sun_path, errno);
+  }
+  
   if (remove(temp_dir) != 0) {
     printf("cannot remove mount directory %s, error = %d \n", temp_dir, errno);
   }
