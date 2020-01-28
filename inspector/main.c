@@ -13,7 +13,9 @@
 #include <limits.h>
 #include <unistd.h>
 #include <paths.h>
+#include <pthread.h>
 
+#include <sys/mount.h>
 #include <sys/errno.h>
 #include <sys/un.h>
 
@@ -465,6 +467,7 @@ int handle_statfs(void *ctx, struct webdav_request_statfs* request, struct webda
 }
 
 int handle_unmount(void *ctx, struct webdav_request_unmount* request) {
+  pthread_exit(NULL);
   return round_trip(
                     ctx,
                     WEBDAV_UNMOUNT,
@@ -543,30 +546,44 @@ int handler(void* ctx, int socket) {
   return webdav_kext_handle(&router, socket);
 }
 
+struct listen_thread_args {
+  struct handler_ctx handler_ctx;
+  struct sockaddr_un listen_addr;
+};
+
+void* listen_thread(void *argp) {
+  struct listen_thread_args* args = (struct listen_thread_args*)argp;
+  
+  printf("start listening on %s \n", args->listen_addr.sun_path);
+  
+  int result = webdav_listen(&args->listen_addr, handler, &args->handler_ctx);
+  if (result != 0) {
+    printf("webdav listen failed, error: %d \n", result);
+  }
+  
+  return NULL;
+}
+
 int main(int argc, char** argv) {
   if (argc != 5) {
     printf("Usage: inspector <path to webdav socket> <mount name> <vol name> <mnt dir> \n");
     return EINVAL;
   }
   
-  struct handler_ctx handler_ctx;
-  bzero(&handler_ctx, sizeof(handler_ctx));
+  struct listen_thread_args args;
+  bzero(&args, sizeof(args));
   
-  strlcpy(handler_ctx.un.sun_path, argv[1], sizeof(handler_ctx.un.sun_path));
-  handler_ctx.un.sun_len = sizeof(handler_ctx.un);
-  handler_ctx.un.sun_family = PF_LOCAL;
+  strlcpy(args.handler_ctx.un.sun_path, argv[1], sizeof(args.handler_ctx.un.sun_path));
+  args.handler_ctx.un.sun_len = sizeof(args.handler_ctx.un);
+  args.handler_ctx.un.sun_family = PF_LOCAL;
   
-  struct sockaddr_un un;
-  bzero(&un, sizeof(un));
-  
-  strlcpy(un.sun_path, SOCKET_PATH, sizeof(un.sun_path));
-  if (mktemp(un.sun_path) == NULL) {
+  strlcpy(args.listen_addr.sun_path, SOCKET_PATH, sizeof(args.listen_addr.sun_path));
+  if (mktemp(args.listen_addr.sun_path) == NULL) {
     printf("cannot create temporary socket, error: %d \n", errno);
     return errno;
   }
-  
-  un.sun_len = sizeof(un);
-  un.sun_family = PF_LOCAL;
+  args.listen_addr.sun_len = sizeof(args.listen_addr);
+  args.listen_addr.sun_family = PF_LOCAL;
   
   char mnt_name[NAME_MAX];
   bzero(mnt_name, sizeof(mnt_name));
@@ -580,12 +597,32 @@ int main(int argc, char** argv) {
   bzero(mnt_dir, sizeof(mnt_dir));
   strlcpy(mnt_dir, argv[4], sizeof(mnt_dir));
   
-  printf("staring inspector %s <-> %s \n", handler_ctx.un.sun_path, un.sun_path);
+  printf("staring inspector %s <-> %s \n", args.handler_ctx.un.sun_path, args.listen_addr.sun_path);
   
-  int result = webdav_mount_and_listen(handler, &handler_ctx, &un, mnt_name, vol_name, mnt_dir);
+  pthread_t listen_thread_id;
   
-  if (remove(un.sun_path) != 0) {
-    printf("cannot remove temporary uds socket file %s, error: %d \n", un.sun_path, errno);
+  int result;
+  if (pthread_create(&listen_thread_id, NULL, listen_thread, &args) != 0) {
+    printf("failed to start listen thread, error: %d \n", errno);
+    result = errno;
+    goto done;
+  }
+  
+  result = webdav_mount(&args.listen_addr, mnt_name, vol_name, mnt_dir);
+  if (result != 0) {
+    printf("webdav mount error, %d \n", result);
+    goto done;
+  }
+  
+  if (pthread_join(listen_thread_id, NULL) != 0) {
+    printf("failed to wait for listen thread, error: %d \n", errno);
+    result = errno;
+    goto done;
+  }
+  
+done:
+  if (remove(args.listen_addr.sun_path) != 0) {
+    printf("cannot remove temporary uds socket file %s, error: %d \n", args.listen_addr.sun_path, errno);
   }
   
   return result;

@@ -262,7 +262,7 @@ done:
   return error;
 }
 
-int mount_webdav(struct sockaddr_un* un, char* mnt_name, char* vol_name, char* mnt_dir) {
+int webdav_mount(struct sockaddr_un* un, char* mnt_name, char* vol_name, char* mnt_dir) {
   struct vfsconf vfsconf;
   bzero(&vfsconf, sizeof(vfsconf));
   
@@ -307,9 +307,9 @@ int mount_webdav(struct sockaddr_un* un, char* mnt_name, char* vol_name, char* m
   return 0;
 }
 
-int webdav_mount_and_listen(int (*handler)(void* ,int), void* ctx, struct sockaddr_un* un, char* mnt_name, char* vol_name, char* mount_dir) {
-  if (handler == NULL || un == NULL || mnt_name == NULL || vol_name == NULL || mount_dir == NULL) {
-    printf("invalid mount_webdav_and_listen arguments \n");
+int webdav_listen(struct sockaddr_un* un, int (*handler)(void*, int), void* ctx) {
+  if (handler == NULL || un == NULL) {
+    printf("invalid webdav_listen args \n");
     return EINVAL;
   }
   
@@ -320,25 +320,18 @@ int webdav_mount_and_listen(int (*handler)(void* ,int), void* ctx, struct sockad
   }
   
   if (bind(listen_socket, (struct sockaddr*)un, sizeof(struct sockaddr_un)) != 0) {
-    printf("cannot bind to listen socket: %d", errno);
+    printf("cannot bind to listen socket: %d \n", errno);
     return errno;
   }
   
-  // Single threaded problem
-  int error = mount_webdav(un, mnt_name, vol_name, mount_dir);
-  if (error != 0) {
-    printf("webdav mount failed, error: %d", error);
-    return 0;
-  }
-  
   if (listen(listen_socket, 10) != 0) {
-    printf("cannot listen to listen socket: %d", errno);
+    printf("cannot listen to listen socket: %d \n", errno);
     return errno;
   }
   
   printf("started listening for webdav kext requests \n");
-  printf("press enter to stop \n");
   
+  int error = 0;
   while (TRUE) {
     struct sockaddr_un addr;
     bzero(&addr, sizeof(addr));
@@ -351,49 +344,13 @@ int webdav_mount_and_listen(int (*handler)(void* ,int), void* ctx, struct sockad
       continue;
     }
     
-    fd_set read_fds;
-    FD_ZERO(&read_fds);
-    FD_SET(accept_socket, &read_fds);
-    FD_SET(STDIN_FILENO, &read_fds);
-    
-    if (select(MAX(STDIN_FILENO, accept_socket) + 1, &read_fds, NULL, NULL, NULL) == -1) {
-      printf("cannot select input, error: %d \n", errno);
+    error = (handler)(ctx, accept_socket);
+    if (error != 0) {
+      printf("socket handle error %d \n", error);
       break;
     }
     
-    if (FD_ISSET(STDIN_FILENO, &read_fds)) {
-      char ch;
-      if (read(STDIN_FILENO, &ch, 1) != 1) {
-        printf("cannot read from stdin, error: %d \n", errno);
-        break;
-      }
-      
-      if (ch == '\n') {
-        break;
-      }
-    }
-    
-    if (FD_ISSET(accept_socket, &read_fds)) {
-      if ((error = (handler)(ctx, accept_socket)) != 0) {
-        printf("socket handle error %d \n", error);
-        break;
-      }
-    }
-    
     close(accept_socket);
-  }
-  
-  printf("terminating \n");
-  
-  int result;
-  
-  if ((result = close(listen_socket)) != 0) {
-    printf("listen socket close error %d \n", result);
-  }
-  
-  // Single threaded problem
-  if ((result = unmount(mount_dir, MNT_FORCE)) != 0) {
-    printf("unmount error %d \n", result);
   }
   
   return error;

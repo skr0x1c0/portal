@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <paths.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include <sys/sysctl.h>
 #include <sys/mount.h>
@@ -23,6 +24,7 @@
 
 #include "webdav_common.h"
 
+#define TEMP_DIR _PATH_TMP ".pwndav.XXXXXX"
 #define ROOT_ID CreateOpaqueID(1, 1)
 #define TARGET_NAME "pwndav"
 #define TARGET_ID CreateOpaqueID(1, 2)
@@ -240,6 +242,7 @@ int handle_statfs(void *ctx, struct webdav_request_statfs* request, struct webda
 }
 
 int handle_unmount(void *ctx, struct webdav_request_unmount* request) {
+  pthread_exit(NULL);
   return 0;
 }
 
@@ -312,80 +315,112 @@ int setup_root_fd(int fd) {
   return 0;
 }
 
+struct listen_thread_args {
+  struct handler_ctx handler_ctx;
+  struct sockaddr_un listen_addr;
+};
+
+void* start_listen(void* argp) {
+  struct listen_thread_args* args = (struct listen_thread_args*)argp;
+  
+  printf("start listening on %s \n", args->listen_addr.sun_path);
+  
+  int result = webdav_listen(&args->listen_addr, handler, &args->handler_ctx);
+  if (result != 0) {
+    printf("webdav listen failed, error: %d \n", result);
+  }
+  
+  return NULL;
+}
+
 int main(int argc, char** argv) {
   if (argc != 3) {
     printf("Usage = pwndav <path to source> <path to target> \n");
     return EINVAL;
   }
   
-  struct handler_ctx handler_ctx;
-  bzero(&handler_ctx, sizeof(handler_ctx));
+  int error;
   
-  strlcpy(handler_ctx.source, argv[1], sizeof(handler_ctx.source));
-  strlcpy(handler_ctx.destination, argv[2], sizeof(handler_ctx.destination));
-  handler_ctx.destination_fd = open(handler_ctx.destination, O_RDONLY);
-  if (handler_ctx.destination_fd < 0) {
+  char temp_dir[PATH_MAX] = TEMP_DIR;
+  if (mkdtemp(temp_dir) == NULL) {
+    printf("cannot create temporary working directory, error: %d \n", errno);
+    error = errno;
+    goto done;
+  }
+  
+  struct listen_thread_args args;
+  bzero(&args, sizeof(args));
+  
+  strlcpy(args.handler_ctx.source, argv[1], sizeof(args.handler_ctx.source));
+  strlcpy(args.handler_ctx.destination, argv[2], sizeof(args.handler_ctx.destination));
+  args.handler_ctx.destination_fd = open(args.handler_ctx.destination, O_RDONLY);
+  if (args.handler_ctx.destination_fd < 0) {
     printf("cannot open destination as readonly, error %d \n", errno);
-    return errno;
+    error = errno;
+    goto done;
   }
   
-  strlcpy(handler_ctx.destination, argv[2], sizeof(handler_ctx.destination));
+  strlcpy(args.handler_ctx.destination, argv[2], sizeof(args.handler_ctx.destination));
   
-  struct sockaddr_un un;
-  bzero(&un, sizeof(un));
-  
-  char id[NAME_MAX] = "pwndav.XXXXXX";
-  if (mktemp(id) == NULL) {
-    printf("cannot create id, error = %d \n", errno);
-    return errno;
-  }
-  
-  snprintf(un.sun_path, sizeof(un.sun_path), "%s.uds.%s", _PATH_TMP, id);
-  un.sun_len = sizeof(un);
-  un.sun_family = PF_LOCAL;
-  
-  char mnt_name[NAME_MAX];
-  bzero(mnt_name, sizeof(mnt_name));
-  snprintf(mnt_name, sizeof(mnt_name), "mount.%s", id);
-  
-  char vol_name[NAME_MAX];
-  bzero(vol_name, sizeof(vol_name));
-  snprintf(vol_name, sizeof(vol_name), "vol.%s", id);
-  
+  snprintf(args.listen_addr.sun_path, sizeof(args.listen_addr.sun_path), "%s/socket.sock", temp_dir);
+  args.listen_addr.sun_len = sizeof(args.listen_addr);
+  args.listen_addr.sun_family = PF_LOCAL;
+
   char mnt_dir[PATH_MAX];
   bzero(mnt_dir, sizeof(mnt_dir));
-  snprintf(mnt_dir, sizeof(mnt_dir), "%s.mnt.%s", _PATH_TMP, id);
+  snprintf(mnt_dir, sizeof(mnt_dir), "%s/mount", temp_dir);
   
   char root_cache_path[PATH_MAX];
   bzero(root_cache_path, sizeof(root_cache_path));
-  snprintf(root_cache_path, sizeof(root_cache_path), "%s.root.cache.%s", _PATH_TMP, id);
-  handler_ctx.root_fd = open(root_cache_path, O_CREAT | O_RDWR);
-  if (handler_ctx.root_fd < 0) {
+  snprintf(root_cache_path, sizeof(root_cache_path), "%s/root_cache", temp_dir);
+  args.handler_ctx.root_fd = open(root_cache_path, O_CREAT | O_RDWR, 0700);
+  if (args.handler_ctx.root_fd < 0) {
     printf("cannot create root cache, error: %d \n", errno);
-    return errno;
+    error = errno;
+    goto done;
   }
   
-  if (setup_root_fd(handler_ctx.root_fd) != 0) {
+  if (setup_root_fd(args.handler_ctx.root_fd) != 0) {
     printf("cannot setup root cache, error: %d \n", errno);
-    return errno;
+    error = errno;
+    goto done;
   }
   
   if (mkdir(mnt_dir, 0700) != 0) {
     printf("cannot create mount directory %s, error = %d \n", mnt_dir, errno);
-    return errno;
+    error = errno;
+    goto done;
   }
   
-  printf("staring pwndav %s \n", id);
+  printf("staring pwndav %s \n", temp_dir);
   
-  int result = webdav_mount_and_listen(handler, &handler_ctx, &un, mnt_name, vol_name, mnt_dir);
-  
-  if (remove(un.sun_path) != 0) {
-    printf("cannot remove temporary uds socket file %s, error = %d \n", un.sun_path, errno);
+  pthread_t listen_thread_id;
+  if (pthread_create(&listen_thread_id, NULL, start_listen, &args) != 0) {
+    printf("cannot start webdav listener, error: %d \n", errno);
+    error = errno;
+    goto done;
   }
   
-  if (remove(mnt_dir) != 0) {
+  error = webdav_mount(&args.listen_addr, "pwndav_mnt", "pwndav_vol", mnt_dir);
+  if (error != 0) {
+    printf("cannot mount webdav, error: %d \n", error);
+    goto done;
+  }
+  
+  if (pthread_join(listen_thread_id, NULL) != 0) {
+    printf("cannot join listen thread, error: %d \n", errno);
+    error = errno;
+    goto done;
+  }
+  
+done:
+  if (remove(args.listen_addr.sun_path) != 0) {
+    printf("cannot remove temporary uds socket file %s, error = %d \n", args.listen_addr.sun_path, errno);
+  }
+  
+  if (remove(temp_dir) != 0) {
     printf("cannot remove mount directory %s, error = %d \n", mnt_dir, errno);
   }
   
-  return result;
+  return error;
 }

@@ -35,6 +35,7 @@ typedef struct webdav_kext_handler {
 } webdav_kext_handler_t;
 
 int webdav_kext_handle(struct webdav_kext_handler* router, int socket);
-int webdav_mount_and_listen(int (*handler)(void* ,int), void* ctx, struct sockaddr_un* un, char* mnt_name, char* vol_name, char* mount_dir);
+int webdav_listen(struct sockaddr_un* un, int (*handler)(void*, int), void* ctx);
+int webdav_mount(struct sockaddr_un* un, char* mnt_name, char* vol_name, char* mnt_dir);
 
 #endif /* webdav_common_h */
