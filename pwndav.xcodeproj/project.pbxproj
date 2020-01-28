@@ -42,6 +42,7 @@
 		F6440A0F23DF4049007FA943 /* webdav_common.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = webdav_common.c; sourceTree = "<group>"; };
 		F6440A2423DF549A007FA943 /* portal */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = portal; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6440A2623DF549A007FA943 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		F6B51A9823E0C372007566F4 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +104,7 @@
 			isa = PBXGroup;
 			children = (
 				F6440A2623DF549A007FA943 /* main.c */,
+				F6B51A9823E0C372007566F4 /* utils.h */,
 			);
 			path = portal;
 			sourceTree = "<group>";

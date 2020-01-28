@@ -23,6 +23,7 @@
 #include <sys/un.h>
 
 #include "webdav_common.h"
+#include "utils.h"
 
 #define TEMP_DIR _PATH_TMP ".portal"
 #define ROOT_ID CreateOpaqueID(1, 1)
@@ -333,8 +334,18 @@ void* start_listen(void* argp) {
 }
 
 int main(int argc, char** argv) {
-  if (argc != 3) {
-    printf("Usage = portal <path to target> <mount path> \n");
+  if (argc != 4) {
+    printf("Usage = portal [read|write] <path to target> <path to source / destination> \n");
+    return EINVAL;
+  }
+  
+  mode_t portal_mode;
+  if (strncmp(argv[1], "read", 4) == 0) {
+    portal_mode = O_WRONLY;
+  } else if (strncmp(argv[1], "write", 5) == 0) {
+    portal_mode = O_RDONLY;
+  } else {
+    printf("invalid portal mode %s \n", argv[1]);
     return EINVAL;
   }
   
@@ -360,8 +371,8 @@ int main(int argc, char** argv) {
   struct listen_thread_args args;
   bzero(&args, sizeof(args));
   
-  strlcpy(args.handler_ctx.destination, argv[1], sizeof(args.handler_ctx.destination));
-  args.handler_ctx.destination_fd = open(args.handler_ctx.destination, O_RDONLY);
+  strlcpy(args.handler_ctx.destination, argv[2], sizeof(args.handler_ctx.destination));
+  args.handler_ctx.destination_fd = open(args.handler_ctx.destination, portal_mode);
   if (args.handler_ctx.destination_fd < 0) {
     printf("cannot open destination as readonly, error %d \n", errno);
     error = errno;
@@ -390,7 +401,13 @@ int main(int argc, char** argv) {
   
   char mnt_dir[PATH_MAX];
   bzero(mnt_dir, sizeof(mnt_dir));
-  strncpy(mnt_dir, argv[2], sizeof(mnt_dir));
+  snprintf(mnt_dir, sizeof(mnt_dir), "%s/mount", temp_dir);
+  
+  if (mkdir(mnt_dir, 0700) != 0) {
+    printf("cannot create mount directory %s, error: %d \n", mnt_dir, errno);
+    error = errno;
+    goto done;
+  }
   
   printf("staring portal %s \n", temp_dir);
   
@@ -404,6 +421,33 @@ int main(int argc, char** argv) {
   error = webdav_mount(&args.listen_addr, "portal_mnt", "portal_vol", mnt_dir);
   if (error != 0) {
     printf("cannot mount webdav, error: %d \n", error);
+    goto done;
+  }
+  
+  sleep(1);
+  
+  char portal_path[PATH_MAX];
+  bzero(portal_path, sizeof(portal_path));
+  snprintf(portal_path, sizeof(portal_path), "%s/portal", mnt_dir);
+  
+  char src_dest_path[PATH_MAX];
+  bzero(src_dest_path, sizeof(src_dest_path));
+  strncpy(src_dest_path, argv[3], sizeof(src_dest_path));
+  
+  int cp_result;
+  if (portal_mode == O_RDONLY) {
+    cp_result = cp(portal_path, src_dest_path);
+  } else if (portal_mode == O_WRONLY) {
+    cp_result = cp(src_dest_path, portal_path);
+  } else {
+    printf("invalid portal mode, %d \n", portal_mode);
+    error = ENOTSUP;
+    goto done;
+  }
+  
+  if (cp_result != 0) {
+    printf("cannot cp, error: %d \n", errno);
+    error = errno;
     goto done;
   }
   
