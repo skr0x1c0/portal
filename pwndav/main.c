@@ -31,7 +31,6 @@
 #define TARGET_INO WEBDAV_ROOTFILEID + 1
 
 struct handler_ctx {
-  char source[PATH_MAX];
   char destination[PATH_MAX];
   
   int destination_fd;
@@ -335,7 +334,7 @@ void* start_listen(void* argp) {
 
 int main(int argc, char** argv) {
   if (argc != 3) {
-    printf("Usage = pwndav <path to source> <path to target> \n");
+    printf("Usage = pwndav <path to target> <mount path> \n");
     return EINVAL;
   }
   
@@ -346,6 +345,9 @@ int main(int argc, char** argv) {
     error = errno;
     goto done;
   }
+  
+  // Ignore error. We will catch later
+  mkdir(TEMP_DIR, 0700);
   
   char temp_dir[PATH_MAX];
   snprintf(temp_dir, sizeof(temp_dir), "%s/%s", TEMP_DIR, id);
@@ -358,24 +360,17 @@ int main(int argc, char** argv) {
   struct listen_thread_args args;
   bzero(&args, sizeof(args));
   
-  strlcpy(args.handler_ctx.source, argv[1], sizeof(args.handler_ctx.source));
-  strlcpy(args.handler_ctx.destination, argv[2], sizeof(args.handler_ctx.destination));
+  strlcpy(args.handler_ctx.destination, argv[1], sizeof(args.handler_ctx.destination));
   args.handler_ctx.destination_fd = open(args.handler_ctx.destination, O_RDONLY);
   if (args.handler_ctx.destination_fd < 0) {
     printf("cannot open destination as readonly, error %d \n", errno);
     error = errno;
     goto done;
   }
-  
-  strlcpy(args.handler_ctx.destination, argv[2], sizeof(args.handler_ctx.destination));
-  
+    
   snprintf(args.listen_addr.sun_path, sizeof(args.listen_addr.sun_path), "%s/socket.sock", temp_dir);
   args.listen_addr.sun_len = sizeof(args.listen_addr);
   args.listen_addr.sun_family = PF_LOCAL;
-
-  char mnt_dir[PATH_MAX];
-  bzero(mnt_dir, sizeof(mnt_dir));
-  snprintf(mnt_dir, sizeof(mnt_dir), "%s/mount", temp_dir);
   
   char root_cache_path[PATH_MAX];
   bzero(root_cache_path, sizeof(root_cache_path));
@@ -393,11 +388,9 @@ int main(int argc, char** argv) {
     goto done;
   }
   
-  if (mkdir(mnt_dir, 0700) != 0) {
-    printf("cannot create mount directory %s, error = %d \n", mnt_dir, errno);
-    error = errno;
-    goto done;
-  }
+  char mnt_dir[PATH_MAX];
+  bzero(mnt_dir, sizeof(mnt_dir));
+  strncpy(mnt_dir, argv[2], sizeof(mnt_dir));
   
   printf("staring pwndav %s \n", temp_dir);
   
@@ -422,7 +415,7 @@ int main(int argc, char** argv) {
   
 done:
   if (remove(temp_dir) != 0) {
-    printf("cannot remove mount directory %s, error = %d \n", mnt_dir, errno);
+    printf("cannot remove mount directory %s, error = %d \n", temp_dir, errno);
   }
   
   return error;
