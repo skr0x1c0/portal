@@ -10,6 +10,7 @@
 		F6440A0223DF3ECC007FA943 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = F6440A0123DF3ECC007FA943 /* main.c */; };
 		F6440A1023DF4049007FA943 /* webdav_common.c in Sources */ = {isa = PBXBuildFile; fileRef = F6440A0F23DF4049007FA943 /* webdav_common.c */; };
 		F6440A2723DF549A007FA943 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = F6440A2623DF549A007FA943 /* main.c */; };
+		F6440A2B23DF5B1D007FA943 /* webdav_common.c in Sources */ = {isa = PBXBuildFile; fileRef = F6440A0F23DF4049007FA943 /* webdav_common.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -194,6 +195,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F6440A2723DF549A007FA943 /* main.c in Sources */,
+				F6440A2B23DF5B1D007FA943 /* webdav_common.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -15,6 +15,10 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
+/* Webdav file type constants */
+#define WEBDAV_FILE_TYPE    1
+#define WEBDAV_DIR_TYPE      2
+
 typedef int webdav_filetype_t;
 
 // XXX Dependency on __DARWIN_64_BIT_INO_T
