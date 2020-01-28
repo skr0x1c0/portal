@@ -40,7 +40,7 @@
 		F6440A0D23DF4012007FA943 /* webdav.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = webdav.h; sourceTree = "<group>"; };
 		F6440A0E23DF4049007FA943 /* webdav_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = webdav_common.h; sourceTree = "<group>"; };
 		F6440A0F23DF4049007FA943 /* webdav_common.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = webdav_common.c; sourceTree = "<group>"; };
-		F6440A2423DF549A007FA943 /* pwndav */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pwndav; sourceTree = BUILT_PRODUCTS_DIR; };
+		F6440A2423DF549A007FA943 /* portal */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = portal; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6440A2623DF549A007FA943 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -65,7 +65,7 @@
 		F64409F523DF3ECC007FA943 = {
 			isa = PBXGroup;
 			children = (
-				F6440A2523DF549A007FA943 /* pwndav */,
+				F6440A2523DF549A007FA943 /* portal */,
 				F6440A0023DF3ECC007FA943 /* inspector */,
 				F6440A1123DF4E89007FA943 /* webdav */,
 				F64409FF23DF3ECC007FA943 /* Products */,
@@ -76,7 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				F64409FE23DF3ECC007FA943 /* inspector */,
-				F6440A2423DF549A007FA943 /* pwndav */,
+				F6440A2423DF549A007FA943 /* portal */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -99,12 +99,12 @@
 			path = webdav;
 			sourceTree = "<group>";
 		};
-		F6440A2523DF549A007FA943 /* pwndav */ = {
+		F6440A2523DF549A007FA943 /* portal */ = {
 			isa = PBXGroup;
 			children = (
 				F6440A2623DF549A007FA943 /* main.c */,
 			);
-			path = pwndav;
+			path = portal;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -127,9 +127,9 @@
 			productReference = F64409FE23DF3ECC007FA943 /* inspector */;
 			productType = "com.apple.product-type.tool";
 		};
-		F6440A2323DF549A007FA943 /* pwndav */ = {
+		F6440A2323DF549A007FA943 /* portal */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F6440A2823DF549A007FA943 /* Build configuration list for PBXNativeTarget "pwndav" */;
+			buildConfigurationList = F6440A2823DF549A007FA943 /* Build configuration list for PBXNativeTarget "portal" */;
 			buildPhases = (
 				F6440A2023DF549A007FA943 /* Sources */,
 				F6440A2123DF549A007FA943 /* Frameworks */,
@@ -139,9 +139,9 @@
 			);
 			dependencies = (
 			);
-			name = pwndav;
+			name = portal;
 			productName = pwndav;
-			productReference = F6440A2423DF549A007FA943 /* pwndav */;
+			productReference = F6440A2423DF549A007FA943 /* portal */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -175,7 +175,7 @@
 			projectRoot = "";
 			targets = (
 				F64409FD23DF3ECC007FA943 /* inspector */,
-				F6440A2323DF549A007FA943 /* pwndav */,
+				F6440A2323DF549A007FA943 /* portal */,
 			);
 		};
 /* End PBXProject section */
@@ -364,7 +364,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F6440A2823DF549A007FA943 /* Build configuration list for PBXNativeTarget "pwndav" */ = {
+		F6440A2823DF549A007FA943 /* Build configuration list for PBXNativeTarget "portal" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F6440A2923DF549A007FA943 /* Debug */,

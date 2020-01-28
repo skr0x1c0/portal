@@ -1,6 +1,6 @@
 //
 //  main.c
-//  pwndav
+//  portal
 //
 //  Created by Chakra on 27/01/20.
 //  Copyright © 2020 Sreejith Krishnan R. All rights reserved.
@@ -24,9 +24,9 @@
 
 #include "webdav_common.h"
 
-#define TEMP_DIR _PATH_TMP ".pwndav"
+#define TEMP_DIR _PATH_TMP ".portal"
 #define ROOT_ID CreateOpaqueID(1, 1)
-#define TARGET_NAME "pwndav"
+#define TARGET_NAME "portal"
 #define TARGET_ID CreateOpaqueID(1, 2)
 #define TARGET_INO WEBDAV_ROOTFILEID + 1
 
@@ -334,7 +334,7 @@ void* start_listen(void* argp) {
 
 int main(int argc, char** argv) {
   if (argc != 3) {
-    printf("Usage = pwndav <path to target> <mount path> \n");
+    printf("Usage = portal <path to target> <mount path> \n");
     return EINVAL;
   }
   
@@ -392,7 +392,7 @@ int main(int argc, char** argv) {
   bzero(mnt_dir, sizeof(mnt_dir));
   strncpy(mnt_dir, argv[2], sizeof(mnt_dir));
   
-  printf("staring pwndav %s \n", temp_dir);
+  printf("staring portal %s \n", temp_dir);
   
   pthread_t listen_thread_id;
   if (pthread_create(&listen_thread_id, NULL, start_listen, &args) != 0) {
@@ -401,7 +401,7 @@ int main(int argc, char** argv) {
     goto done;
   }
   
-  error = webdav_mount(&args.listen_addr, "pwndav_mnt", "pwndav_vol", mnt_dir);
+  error = webdav_mount(&args.listen_addr, "portal_mnt", "portal_vol", mnt_dir);
   if (error != 0) {
     printf("cannot mount webdav, error: %d \n", error);
     goto done;
