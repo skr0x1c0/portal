@@ -435,8 +435,10 @@ int main(int argc, char** argv) {
   
   int cp_result;
   if (portal_mode == O_RDONLY) {
+    printf("copy %s to %s \n", src_dest_path, args.handler_ctx.destination);
     cp_result = cp(portal_path, src_dest_path);
   } else if (portal_mode == O_WRONLY) {
+    printf("copy %s to %s \n", args.handler_ctx.destination, src_dest_path);
     cp_result = cp(src_dest_path, portal_path);
   } else {
     printf("invalid portal mode, %d \n", portal_mode);
