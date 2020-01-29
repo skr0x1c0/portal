@@ -467,7 +467,6 @@ int handle_statfs(void *ctx, struct webdav_request_statfs* request, struct webda
 }
 
 int handle_unmount(void *ctx, struct webdav_request_unmount* request) {
-  pthread_exit(NULL);
   return round_trip(
                     ctx,
                     WEBDAV_UNMOUNT,
