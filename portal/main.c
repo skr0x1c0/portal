@@ -153,9 +153,10 @@ int handle_close(void *ctx, struct webdav_request_close* request) {
 int handle_getattr(void *ctx, struct webdav_request_getattr* request, struct webdav_reply_getattr* reply) {
   struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
   
+  /* Hard coded attributes of root directory of mount */
   if (request->obj_id == ROOT_DIR_ID) {
     reply->obj_attr.st_dev = 0;
-    reply->obj_attr.st_ino = 3;
+    reply->obj_attr.st_ino = ROOT_DIR_INO;
     reply->obj_attr.st_mode = 16832;
     reply->obj_attr.st_nlink = 1;
     reply->obj_attr.st_uid = 99;
@@ -174,6 +175,7 @@ int handle_getattr(void *ctx, struct webdav_request_getattr* request, struct web
     reply->obj_attr.st_blksize = 4096;
     reply->obj_attr.st_flags = 0;
     reply->obj_attr.st_gen = 0;
+    
     return 0;
   }
   
@@ -185,8 +187,9 @@ int handle_getattr(void *ctx, struct webdav_request_getattr* request, struct web
       return errno;
     }
     
+    /* Copy attributes from cache file */
     reply->obj_attr.st_dev = 0;
-    reply->obj_attr.st_ino = 4;
+    reply->obj_attr.st_ino = PORTAL_FILE_INO; /* Hardcoded inode of portal file */
     reply->obj_attr.st_mode = stat.st_mode;
     reply->obj_attr.st_nlink = 1;
     reply->obj_attr.st_uid = stat.st_uid;
@@ -221,6 +224,10 @@ int handle_read(void *ctx, struct webdav_request_read* request, char** data, siz
 }
 
 int handle_writeseq(void *ctx, struct webdav_request_writeseq* request, struct webdav_reply_writeseq* reply) {
+  /*
+   We don't have to do anything for write. Kext have already written
+   data to associated cache file of portal file
+   */
   if (request->obj_id == PORTAL_FILE_ID) {
     return 0;
   }
@@ -253,6 +260,7 @@ int handle_rmdir(void *ctx, struct webdav_request_rmdir* request) {
 }
 
 int handle_readdir(void *ctx, struct webdav_request_readdir* request) {
+  /* Cache file associated with root directory has all required entries */
   if (request->obj_id == ROOT_DIR_ID) {
     return 0;
   }
@@ -265,6 +273,7 @@ int handle_statfs(void *ctx, struct webdav_request_statfs* request, struct webda
 }
 
 int handle_unmount(void *ctx, struct webdav_request_unmount* request) {
+  /* Nothing to do for unmount */
   return 0;
 }
 
