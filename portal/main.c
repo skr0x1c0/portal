@@ -31,33 +31,29 @@
  */
 #define TEMP_DIR _PATH_TMP ".portal"
 
+/* Inode of parent of mount root directory */
 #define ROOT_DIR_PARENT_INO WEBDAV_ROOTPARENTFILEID
 
-/*
- Opaque ID of root file
- */
+/* Opaque ID of mount root directory */
 #define ROOT_DIR_ID CreateOpaqueID(1, 1)
+/* Inode of mount root directory */
 #define ROOT_DIR_INO WEBDAV_ROOTFILEID
 
-/*
- A file with name PORTAL_FILE_NAME will be present in WebDav
- mount directory. The associated cache file of this file
- will be the target file input by user. Any read / write
- operation file PORTAL_FILE_NAME inside WebDav mount will reflect
- on target file input by user
- */
-#define PORTAL_FILE_NAME "portal"  /* Name of target file inside webdav mount */
-#define PORTAL_FILE_ID CreateOpaqueID(1, 2)  /* Opaque ID of target file */
-#define PORTAL_FILE_INO ROOT_DIR_INO + 1 /* Inode of target file */
+/* Name of portal file inside webdav mount */
+#define PORTAL_FILE_NAME "portal"
+/* Opaque ID of portal file */
+#define PORTAL_FILE_ID CreateOpaqueID(1, 2)
+/* Inode of portal file */
+#define PORTAL_FILE_INO ROOT_DIR_INO + 1
 
-/*
- Passed as first argument to handle_* functions below
- */
+/* Passed as first argument to handle_* functions below */
 struct handler_ctx {
-  char target[PATH_MAX]; /* User input target file */
-  int target_fd; /* File descriptor index of user input target file */
-  int root_dir_cache_fd; /* File descriptor index of cache file associated to root
-                directory of mount */
+  /* User input target file */
+  char target[PATH_MAX];
+  /* File descriptor index of user input target file */
+  int target_fd;
+  /* File descriptor index of cache file associated to root directory of mount */
+  int root_dir_cache_fd;
 };
 
 int handle_lookup(void *ctx, struct webdav_request_lookup* request, struct webdav_reply_lookup* reply) {
@@ -100,24 +96,6 @@ int handle_create(void *ctx, struct webdav_request_create *request, struct webda
   return EINVAL;
 }
 
-int associate_cache_file(int ref, int fd) {
-  struct vfsconf conf;
-  bzero(&conf, sizeof(conf));
-  if (getvfsbyname("webdav", &conf) != 0) {
-    return -1;
-  }
-  
-  int mib[5];
-  
-  mib[0] = CTL_VFS;
-  mib[1] = conf.vfc_typenum;
-  mib[2] = WEBDAV_ASSOCIATECACHEFILE_SYSCTL;
-  mib[3] = ref;
-  mib[4] = fd;
-  
-  return sysctl(mib, 5, NULL, NULL, NULL, 0);
-}
-
 int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_reply_open* reply) {
   struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
   
@@ -130,7 +108,20 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
     return EINVAL;
   }
   
-  if (associate_cache_file(request->ref, fd) != 0) {
+  struct vfsconf conf;
+  bzero(&conf, sizeof(conf));
+  if (getvfsbyname("webdav", &conf) != 0) {
+    return errno;
+  }
+  
+  int mib[5];
+  mib[0] = CTL_VFS;
+  mib[1] = conf.vfc_typenum;
+  mib[2] = WEBDAV_ASSOCIATECACHEFILE_SYSCTL;
+  mib[3] = request->ref;
+  mib[4] = fd;
+  
+  if (sysctl(mib, 5, NULL, NULL, NULL, 0) != 0) {
     printf("associate cache file sysctl failed, error: %d \n", errno);
     return errno;
   }
