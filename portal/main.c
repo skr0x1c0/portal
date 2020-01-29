@@ -348,7 +348,6 @@ int main(int argc, char** argv) {
   char id[NAME_MAX] = "XXXXXX";
   if (mktemp(id) == NULL) {
     printf("cannot create id, error: %d \n", errno);
-    error = errno;
     goto done;
   }
   
@@ -359,7 +358,6 @@ int main(int argc, char** argv) {
   snprintf(temp_dir, sizeof(temp_dir), "%s/%s", TEMP_DIR, id);
   if (mkdir(temp_dir, 0700) != 0) {
     printf("cannot create temporary working directory, error: %d \n", errno);
-    error = errno;
     goto done;
   }
   
@@ -370,7 +368,6 @@ int main(int argc, char** argv) {
   args.handler_ctx.destination_fd = open(args.handler_ctx.destination, portal_mode);
   if (args.handler_ctx.destination_fd < 0) {
     printf("cannot open destination as readonly, error %d \n", errno);
-    error = errno;
     goto done;
   }
     
@@ -384,13 +381,11 @@ int main(int argc, char** argv) {
   args.handler_ctx.root_fd = open(root_cache_path, O_CREAT | O_RDWR, 0700);
   if (args.handler_ctx.root_fd < 0) {
     printf("cannot create root cache, error: %d \n", errno);
-    error = errno;
     goto done;
   }
   
   if (setup_root_fd(args.handler_ctx.root_fd) != 0) {
     printf("cannot setup root cache, error: %d \n", errno);
-    error = errno;
     goto done;
   }
   
@@ -400,7 +395,6 @@ int main(int argc, char** argv) {
   
   if (mkdir(mnt_dir, 0700) != 0) {
     printf("cannot create mount directory %s, error: %d \n", mnt_dir, errno);
-    error = errno;
     goto done;
   }
   
@@ -409,13 +403,13 @@ int main(int argc, char** argv) {
   pthread_t listen_thread_id;
   if (pthread_create(&listen_thread_id, NULL, start_listen, &args) != 0) {
     printf("cannot start webdav listener, error: %d \n", errno);
-    error = errno;
     goto done;
   }
   
   error = webdav_mount(&args.listen_addr, "portal_mnt", "portal_vol", mnt_dir);
   if (error != 0) {
     printf("cannot mount webdav, error: %d \n", error);
+    errno = error;
     goto done;
   }
   
@@ -438,25 +432,22 @@ int main(int argc, char** argv) {
     cp_result = cp(src_dest_path, portal_path);
   } else {
     printf("invalid portal mode, %d \n", portal_mode);
-    error = ENOTSUP;
+    errno = ENOTSUP;
     goto done;
   }
   
   if (cp_result != 0) {
     printf("cannot cp, error: %d \n", errno);
-    error = errno;
     goto done;
   }
   
   if (unmount(mnt_dir, MNT_FORCE) != 0) {
     printf("cannot unmount, error: %d \n", errno);
-    error = errno;
     goto done;
   }
   
   if (pthread_join(listen_thread_id, NULL) != 0) {
     printf("cannot join listen thread, error: %d \n", errno);
-    error = errno;
     goto done;
   }
   
@@ -477,5 +468,5 @@ done:
     printf("cannot remove mount directory %s, error = %d \n", temp_dir, errno);
   }
   
-  return error;
+  return errno;
 }
