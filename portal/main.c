@@ -55,14 +55,14 @@ int handle_lookup(void *ctx, struct webdav_request_lookup* request, struct webda
       reply->obj_fileid = TARGET_INO;
       reply->obj_type = WEBDAV_FILE_TYPE;
       reply->obj_filesize = stat.st_size;
-      reply->obj_atime.tv_sec = 1580000000;
-      reply->obj_atime.tv_nsec = 0;
-      reply->obj_ctime.tv_sec = 1580000000;
-      reply->obj_ctime.tv_nsec = 0;
-      reply->obj_mtime.tv_sec = 1580000000;
-      reply->obj_mtime.tv_nsec = 0;
-      reply->obj_createtime.tv_sec = 1580000000;
-      reply->obj_createtime.tv_nsec = 0;
+      reply->obj_atime.tv_sec = stat.st_atimespec.tv_sec;
+      reply->obj_atime.tv_nsec = stat.st_atimespec.tv_nsec;
+      reply->obj_ctime.tv_sec = stat.st_ctimespec.tv_sec;
+      reply->obj_ctime.tv_nsec = stat.st_ctimespec.tv_nsec;
+      reply->obj_mtime.tv_sec = stat.st_mtimespec.tv_sec;
+      reply->obj_mtime.tv_nsec = stat.st_mtimespec.tv_nsec;
+      reply->obj_createtime.tv_sec = stat.st_birthtimespec.tv_sec;
+      reply->obj_createtime.tv_nsec = stat.st_birthtimespec.tv_nsec;
      
       return 0;
     }
