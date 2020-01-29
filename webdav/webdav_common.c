@@ -257,6 +257,10 @@ int webdav_kext_handle(struct webdav_kext_handler* router, int socket) {
     goto done;
   }
   
+  /*
+   If the operation was unmount and operation completed without error,
+   then exit listener thread
+   */
   if (operation == WEBDAV_UNMOUNT) {
     pthread_exit(NULL);
   }
