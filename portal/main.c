@@ -25,6 +25,20 @@
 #include "webdav_common.h"
 #include "utils.h"
 
+#define DOC "\
+portal can bypass file system permissions assigned to a file \n\
+portal allows to write on readonly files and to read from write only files \n\
+\n\
+Usage: portal [read|write] /path/to/target /path/to/source/or/destination \n \
+\n\
+Examples: \n\
+To copy payload.txt to readonly file protected.txt in $HOME directory \n \
+  portal write ~/protected.txt ~/payload.txt \n \
+\n\
+To copy from writeonly file confidental_log.txt to log.txt in $HOME directory \n\
+  portal read ~/confidential_log.txt ~/log.txt \n\
+"
+
 /*
  Temporary directory for storing mount points, caches
  and UDS socket file
@@ -380,8 +394,7 @@ int setup_root_fd(int fd) {
 
 int main(int argc, char** argv) {
   if (argc != 4) {
-    char* doc = "Usage: portal [read|write] <path to target> <path to source / destination> \n. Example: To copy from src.txt to dest.txt \n"
-    printf(doc);
+    printf(DOC);
     return EINVAL;
   }
   
