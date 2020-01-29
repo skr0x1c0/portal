@@ -152,6 +152,7 @@ int handle_getattr(void *ctx, struct webdav_request_getattr* request, struct web
   
   if (request->obj_id == TARGET_ID) {
     struct stat stat;
+    bzero(&stat, sizeof(stat));
     if (fstat(handler_ctx->destination_fd, &stat) != 0) {
       printf("cannot get destination file stat, error %d \n", errno);
       return errno;
