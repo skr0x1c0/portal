@@ -88,12 +88,7 @@ int associate_cache_file(int ref, int fd) {
   mib[3] = ref;
   mib[4] = fd;
   
-  if (sysctl(mib, 5, NULL, NULL, NULL, 0) != 0) {
-    printf("associate cache file sysctl failed, error: %d \n", errno);
-    return -1;
-  }
-  
-  return 0;
+  return sysctl(mib, 5, NULL, NULL, NULL, 0);
 }
 
 int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_reply_open* reply) {
@@ -101,6 +96,7 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
   
   if (request->obj_id == ROOT_ID) {
     if (associate_cache_file(request->ref, handler_ctx->root_fd) != 0) {
+      printf("associate cache file sysctl failed, error: %d \n", errno);
       return errno;
     }
     
