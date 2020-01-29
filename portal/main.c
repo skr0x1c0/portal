@@ -78,7 +78,9 @@ int handle_create(void *ctx, struct webdav_request_create *request, struct webda
 int associate_cache_file(int ref, int fd) {
   struct vfsconf conf;
   bzero(&conf, sizeof(conf));
-  getvfsbyname("webdav", &conf);
+  if (getvfsbyname("webdav", &conf) != 0) {
+    return -1;
+  }
   
   int mib[5];
   
