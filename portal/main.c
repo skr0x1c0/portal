@@ -101,8 +101,10 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
   
   int fd;
   if (request->obj_id == ROOT_DIR_ID) {
+    /* FD of root directory cache setup in main function */
     fd = handler_ctx->root_dir_cache_fd;
   } else if (request->obj_id == PORTAL_FILE_ID) {
+    /* FD of target file given as input */
     fd = handler_ctx->target_fd;
   } else {
     return EINVAL;
@@ -121,11 +123,20 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
   mib[3] = request->ref;
   mib[4] = fd;
   
+  /*
+   Calls webdav_sysctl function in kext. Kext will use the fd (mib[4])
+   to get reference of vnode associated with the fd of calling process
+   */
   if (sysctl(mib, 5, NULL, NULL, NULL, 0) != 0) {
     printf("associate cache file sysctl failed, error: %d \n", errno);
     return errno;
   }
   
+  /*
+   Used by kext for authentication. For successful open, reply->pid and
+   pid of process calling the sysctl should match. If they don't match,
+   kext rejects the open request with error EPERM
+   */
   reply->pid = getpid();
   
   return 0;
