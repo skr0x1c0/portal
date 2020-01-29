@@ -273,7 +273,10 @@ int handle_statfs(void *ctx, struct webdav_request_statfs* request, struct webda
 }
 
 int handle_unmount(void *ctx, struct webdav_request_unmount* request) {
-  /* Nothing to do for unmount */
+  /*
+   Nothing to do for unmount. webdav_kext_handle function will kill
+   listener thread when handle_mount function returns without any error
+   */
   return 0;
 }
 
@@ -316,6 +319,35 @@ int handler(void* ctx, int socket) {
   return webdav_kext_handle(&router, socket);
 }
 
+/* Passed as argument to start_listen function */
+struct listen_thread_args {
+  /* Passed as first argument to handle_* functions above */
+  struct handler_ctx handler_ctx;
+  /* Socket address to listen for incoming connections from kext */
+  struct sockaddr_un listen_addr;
+};
+
+/*
+ Starts listener thread. Listens for incoming connections from kext,
+ read the request, call appropriate handle_* function for request and
+ send the result back to kext
+ */
+void* start_listen(void* argp) {
+  struct listen_thread_args* args = (struct listen_thread_args*)argp;
+  
+  printf("start listening on %s \n", args->listen_addr.sun_path);
+  
+  int result = webdav_listen(&args->listen_addr, handler, &args->handler_ctx);
+  if (result != 0) {
+    printf("webdav listen failed, error: %d \n", result);
+  }
+  
+  return NULL;
+}
+
+/*
+ Adds '.', '..' and 'portal' file entry to file with given fd
+ */
 int setup_root_fd(int fd) {
   struct webdav_dirent dirent[3];
   bzero(&dirent, sizeof(dirent));
@@ -346,27 +378,10 @@ int setup_root_fd(int fd) {
   return 0;
 }
 
-struct listen_thread_args {
-  struct handler_ctx handler_ctx;
-  struct sockaddr_un listen_addr;
-};
-
-void* start_listen(void* argp) {
-  struct listen_thread_args* args = (struct listen_thread_args*)argp;
-  
-  printf("start listening on %s \n", args->listen_addr.sun_path);
-  
-  int result = webdav_listen(&args->listen_addr, handler, &args->handler_ctx);
-  if (result != 0) {
-    printf("webdav listen failed, error: %d \n", result);
-  }
-  
-  return NULL;
-}
-
 int main(int argc, char** argv) {
   if (argc != 4) {
-    printf("Usage = portal [read|write] <path to target> <path to source / destination> \n");
+    char* doc = "Usage: portal [read|write] <path to target> <path to source / destination> \n. Example: To copy from src.txt to dest.txt \n"
+    printf(doc);
     return EINVAL;
   }
   
