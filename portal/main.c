@@ -25,25 +25,50 @@
 #include "webdav_common.h"
 #include "utils.h"
 
+/*
+ Temporary directory for storing mount points, caches
+ and UDS socket file
+ */
 #define TEMP_DIR _PATH_TMP ".portal"
-#define ROOT_ID CreateOpaqueID(1, 1)
-#define TARGET_NAME "portal"
-#define TARGET_ID CreateOpaqueID(1, 2)
-#define TARGET_INO WEBDAV_ROOTFILEID + 1
 
+#define ROOT_DIR_PARENT_INO WEBDAV_ROOTPARENTFILEID
+
+/*
+ Opaque ID of root file
+ */
+#define ROOT_DIR_ID CreateOpaqueID(1, 1)
+#define ROOT_DIR_INO WEBDAV_ROOTFILEID
+
+/*
+ A file with name PORTAL_FILE_NAME will be present in WebDav
+ mount directory. The associated cache file of this file
+ will be the target file input by user. Any read / write
+ operation file PORTAL_FILE_NAME inside WebDav mount will reflect
+ on target file input by user
+ */
+#define PORTAL_FILE_NAME "portal"  /* Name of target file inside webdav mount */
+#define PORTAL_FILE_ID CreateOpaqueID(1, 2)  /* Opaque ID of target file */
+#define PORTAL_FILE_INO ROOT_DIR_INO + 1 /* Inode of target file */
+
+/*
+ Passed as first argument to handle_* functions below
+ */
 struct handler_ctx {
-  char destination[PATH_MAX];
-  
-  int destination_fd;
-  int root_fd;
+  char destination[PATH_MAX]; /* User input target file */
+  int destination_fd; /* File descriptor index of user input target file */
+  int root_fd; /* File descriptor index of cache file associated to root
+                directory of mount */
 };
 
 int handle_lookup(void *ctx, struct webdav_request_lookup* request, struct webdav_reply_lookup* reply) {
   struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
   
-  // Root directory
-  if (request->dir_id == ROOT_ID) {
-    if (strncmp(request->name, TARGET_NAME, MIN(sizeof(TARGET_NAME), request->name_length)) == 0) {
+  /*
+   Only need to handle lookup request to file PORTAL_FILE_NAME inside
+   root directory
+   */
+  if (request->dir_id == ROOT_DIR_ID) {
+    if (strncmp(request->name, PORTAL_FILE_NAME, MIN(sizeof(PORTAL_FILE_NAME), request->name_length)) == 0) {
       
       struct stat stat;
       if (fstat(handler_ctx->destination_fd, &stat) != 0) {
@@ -51,8 +76,8 @@ int handle_lookup(void *ctx, struct webdav_request_lookup* request, struct webda
         return errno;
       }
       
-      reply->obj_id = TARGET_ID;
-      reply->obj_fileid = TARGET_INO;
+      reply->obj_id = PORTAL_FILE_ID;
+      reply->obj_fileid = PORTAL_FILE_INO;
       reply->obj_type = WEBDAV_FILE_TYPE;
       reply->obj_filesize = stat.st_size;
       reply->obj_atime.tv_sec = stat.st_atimespec.tv_sec;
@@ -97,9 +122,9 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
   struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
   
   int fd;
-  if (request->obj_id == ROOT_ID) {
+  if (request->obj_id == ROOT_DIR_ID) {
     fd = handler_ctx->root_fd;
-  } else if (request->obj_id == TARGET_ID) {
+  } else if (request->obj_id == PORTAL_FILE_ID) {
     fd = handler_ctx->destination_fd;
   } else {
     return EINVAL;
@@ -116,7 +141,7 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
 }
 
 int handle_close(void *ctx, struct webdav_request_close* request) {
-  if (request->obj_id == ROOT_ID || request->obj_id == TARGET_ID) {
+  if (request->obj_id == ROOT_DIR_ID || request->obj_id == PORTAL_FILE_ID) {
     return 0;
   }
   
@@ -126,7 +151,7 @@ int handle_close(void *ctx, struct webdav_request_close* request) {
 int handle_getattr(void *ctx, struct webdav_request_getattr* request, struct webdav_reply_getattr* reply) {
   struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
   
-  if (request->obj_id == ROOT_ID) {
+  if (request->obj_id == ROOT_DIR_ID) {
     reply->obj_attr.st_dev = 0;
     reply->obj_attr.st_ino = 3;
     reply->obj_attr.st_mode = 16832;
@@ -150,7 +175,7 @@ int handle_getattr(void *ctx, struct webdav_request_getattr* request, struct web
     return 0;
   }
   
-  if (request->obj_id == TARGET_ID) {
+  if (request->obj_id == PORTAL_FILE_ID) {
     struct stat stat;
     bzero(&stat, sizeof(stat));
     if (fstat(handler_ctx->destination_fd, &stat) != 0) {
@@ -194,7 +219,7 @@ int handle_read(void *ctx, struct webdav_request_read* request, char** data, siz
 }
 
 int handle_writeseq(void *ctx, struct webdav_request_writeseq* request, struct webdav_reply_writeseq* reply) {
-  if (request->obj_id == TARGET_ID) {
+  if (request->obj_id == PORTAL_FILE_ID) {
     return 0;
   }
   
@@ -202,7 +227,7 @@ int handle_writeseq(void *ctx, struct webdav_request_writeseq* request, struct w
 }
 
 int handle_fsync(void *ctx, struct webdav_request_fsync* request) {
-  if (request->obj_id == TARGET_ID) {
+  if (request->obj_id == PORTAL_FILE_ID) {
     return 0;
   }
   
@@ -226,7 +251,7 @@ int handle_rmdir(void *ctx, struct webdav_request_rmdir* request) {
 }
 
 int handle_readdir(void *ctx, struct webdav_request_readdir* request) {
-  if (request->obj_id == ROOT_ID) {
+  if (request->obj_id == ROOT_DIR_ID) {
     return 0;
   }
   
@@ -284,22 +309,22 @@ int setup_root_fd(int fd) {
   struct webdav_dirent dirent[3];
   bzero(&dirent, sizeof(dirent));
   
-  dirent[0].d_ino = WEBDAV_ROOTFILEID;
+  dirent[0].d_ino = ROOT_DIR_INO;
   dirent[0].d_name[0] = '.';
   dirent[0].d_namlen = 1;
   dirent[0].d_type = DT_DIR;
   dirent[0].d_reclen = sizeof(struct webdav_dirent);
   
-  dirent[1].d_ino = WEBDAV_ROOTPARENTFILEID;
+  dirent[1].d_ino = ROOT_DIR_PARENT_INO;
   dirent[1].d_name[0] = '.';
   dirent[1].d_name[1] = '.';
   dirent[1].d_namlen = 2;
   dirent[1].d_type = DT_DIR;
   dirent[1].d_reclen = sizeof(struct webdav_dirent);
   
-  dirent[2].d_ino = TARGET_INO;
-  strncpy(dirent[2].d_name, TARGET_NAME, sizeof(dirent[2].d_name));
-  dirent[2].d_namlen = strnlen(TARGET_NAME, sizeof(TARGET_NAME));
+  dirent[2].d_ino = PORTAL_FILE_INO;
+  strncpy(dirent[2].d_name, PORTAL_FILE_NAME, sizeof(dirent[2].d_name));
+  dirent[2].d_namlen = strnlen(PORTAL_FILE_NAME, sizeof(PORTAL_FILE_NAME));
   dirent[2].d_type = DT_REG;
   dirent[2].d_reclen = sizeof(struct webdav_dirent);
   

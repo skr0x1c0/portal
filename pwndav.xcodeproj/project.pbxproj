@@ -42,6 +42,7 @@
 		F6440A0F23DF4049007FA943 /* webdav_common.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = webdav_common.c; sourceTree = "<group>"; };
 		F6440A2423DF549A007FA943 /* portal */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = portal; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6440A2623DF549A007FA943 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		F64E653223E18D18004BE3E3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		F6B51A9823E0C372007566F4 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -66,6 +67,7 @@
 		F64409F523DF3ECC007FA943 = {
 			isa = PBXGroup;
 			children = (
+				F64E653223E18D18004BE3E3 /* README.md */,
 				F6440A2523DF549A007FA943 /* portal */,
 				F6440A0023DF3ECC007FA943 /* inspector */,
 				F6440A1123DF4E89007FA943 /* webdav */,
