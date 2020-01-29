@@ -54,9 +54,9 @@
  Passed as first argument to handle_* functions below
  */
 struct handler_ctx {
-  char destination[PATH_MAX]; /* User input target file */
-  int destination_fd; /* File descriptor index of user input target file */
-  int root_fd; /* File descriptor index of cache file associated to root
+  char target[PATH_MAX]; /* User input target file */
+  int target_fd; /* File descriptor index of user input target file */
+  int root_dir_cache_fd; /* File descriptor index of cache file associated to root
                 directory of mount */
 };
 
@@ -71,7 +71,7 @@ int handle_lookup(void *ctx, struct webdav_request_lookup* request, struct webda
     if (strncmp(request->name, PORTAL_FILE_NAME, MIN(sizeof(PORTAL_FILE_NAME), request->name_length)) == 0) {
       
       struct stat stat;
-      if (fstat(handler_ctx->destination_fd, &stat) != 0) {
+      if (fstat(handler_ctx->target_fd, &stat) != 0) {
         printf("cannot get destination file stat, error %d \n", errno);
         return errno;
       }
@@ -123,9 +123,9 @@ int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_re
   
   int fd;
   if (request->obj_id == ROOT_DIR_ID) {
-    fd = handler_ctx->root_fd;
+    fd = handler_ctx->root_dir_cache_fd;
   } else if (request->obj_id == PORTAL_FILE_ID) {
-    fd = handler_ctx->destination_fd;
+    fd = handler_ctx->target_fd;
   } else {
     return EINVAL;
   }
@@ -178,7 +178,7 @@ int handle_getattr(void *ctx, struct webdav_request_getattr* request, struct web
   if (request->obj_id == PORTAL_FILE_ID) {
     struct stat stat;
     bzero(&stat, sizeof(stat));
-    if (fstat(handler_ctx->destination_fd, &stat) != 0) {
+    if (fstat(handler_ctx->target_fd, &stat) != 0) {
       printf("cannot get destination file stat, error %d \n", errno);
       return errno;
     }
@@ -389,9 +389,9 @@ int main(int argc, char** argv) {
   struct listen_thread_args args;
   bzero(&args, sizeof(args));
   
-  strlcpy(args.handler_ctx.destination, argv[2], sizeof(args.handler_ctx.destination));
-  args.handler_ctx.destination_fd = open(args.handler_ctx.destination, portal_mode);
-  if (args.handler_ctx.destination_fd < 0) {
+  strlcpy(args.handler_ctx.target, argv[2], sizeof(args.handler_ctx.target));
+  args.handler_ctx.target_fd = open(args.handler_ctx.target, portal_mode);
+  if (args.handler_ctx.target_fd < 0) {
     printf("cannot open destination as readonly, error %d \n", errno);
     goto done;
   }
@@ -403,13 +403,13 @@ int main(int argc, char** argv) {
   char root_cache_path[PATH_MAX];
   bzero(root_cache_path, sizeof(root_cache_path));
   snprintf(root_cache_path, sizeof(root_cache_path), "%s/root_cache", temp_dir);
-  args.handler_ctx.root_fd = open(root_cache_path, O_CREAT | O_RDWR, 0700);
-  if (args.handler_ctx.root_fd < 0) {
+  args.handler_ctx.root_dir_cache_fd = open(root_cache_path, O_CREAT | O_RDWR, 0700);
+  if (args.handler_ctx.root_dir_cache_fd < 0) {
     printf("cannot create root cache, error: %d \n", errno);
     goto done;
   }
   
-  if (setup_root_fd(args.handler_ctx.root_fd) != 0) {
+  if (setup_root_fd(args.handler_ctx.root_dir_cache_fd) != 0) {
     printf("cannot setup root cache, error: %d \n", errno);
     goto done;
   }
@@ -450,10 +450,10 @@ int main(int argc, char** argv) {
   
   int cp_result;
   if (portal_mode == O_RDONLY) {
-    printf("copy %s to %s \n", src_dest_path, args.handler_ctx.destination);
+    printf("copy %s to %s \n", src_dest_path, args.handler_ctx.target);
     cp_result = cp(portal_path, src_dest_path);
   } else if (portal_mode == O_WRONLY) {
-    printf("copy %s to %s \n", args.handler_ctx.destination, src_dest_path);
+    printf("copy %s to %s \n", args.handler_ctx.target, src_dest_path);
     cp_result = cp(src_dest_path, portal_path);
   } else {
     printf("invalid portal mode, %d \n", portal_mode);
