@@ -96,26 +96,23 @@ int associate_cache_file(int ref, int fd) {
 int handle_open(void *ctx, struct webdav_request_open* request, struct webdav_reply_open* reply) {
   struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
   
+  int fd;
   if (request->obj_id == ROOT_ID) {
-    if (associate_cache_file(request->ref, handler_ctx->root_fd) != 0) {
-      printf("associate cache file sysctl failed, error: %d \n", errno);
-      return errno;
-    }
-    
-    reply->pid = getpid();
-    return 0;
+    fd = handler_ctx->root_fd;
+  } else if (request->obj_id == TARGET_ID) {
+    fd = handler_ctx->destination_fd;
+  } else {
+    return EINVAL;
   }
   
-  if (request->obj_id == TARGET_ID) {
-    if (associate_cache_file(request->ref, handler_ctx->destination_fd) != 0) {
-      return errno;
-    }
-    
-    reply->pid = getpid();
-    return 0;
+  if (associate_cache_file(request->ref, fd) != 0) {
+    printf("associate cache file sysctl failed, error: %d \n", errno);
+    return errno;
   }
   
-  return EINVAL;
+  reply->pid = getpid();
+  
+  return 0;
 }
 
 int handle_close(void *ctx, struct webdav_request_close* request) {
