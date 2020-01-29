@@ -217,8 +217,6 @@ int webdav_kext_route(
   
   if (error != 0) {
     printf("ERROR[%s]: %d \n", op_str,  error);
-  } else {
-    printf("OK[%s] \n", op_str);
   }
   
 done:
