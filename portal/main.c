@@ -530,7 +530,7 @@ int main(int argc, char** argv) {
     printf("copy %s to %s \n", args.handler_ctx.target, src_dest_path);
     cp_result = cp(src_dest_path, portal_path);
   } else {
-    printf("invalid portal mode, %d \n", portal_mode);
+    printf("unsupported portal mode, %d \n", portal_mode);
     errno = ENOTSUP;
     goto done;
   }
