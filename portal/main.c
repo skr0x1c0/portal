@@ -535,12 +535,12 @@ int main(int argc, char** argv) {
     goto done;
   }
   
-  printf("all done \n");
-  
   if (cp_result != 0) {
     printf("cannot cp, error: %d \n", errno);
     goto done;
   }
+  
+  printf("done \n");
   
   if (unmount(mnt_dir, MNT_FORCE) != 0) {
     printf("cannot unmount, error: %d \n", errno);
