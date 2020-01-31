@@ -76,7 +76,7 @@ int handle_lookup(void *ctx, struct webdav_request_lookup* request, struct webda
   struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
   
   /*
-   Only need to handle lookup request to file PORTAL_FILE_NAME inside
+   Only need to handle lookup request for file PORTAL_FILE_NAME inside
    root directory
    */
   if (request->dir_id == ROOT_DIR_ID) {
@@ -169,7 +169,7 @@ int handle_close(void *ctx, struct webdav_request_close* request) {
 int handle_getattr(void *ctx, struct webdav_request_getattr* request, struct webdav_reply_getattr* reply) {
   struct handler_ctx* handler_ctx = (struct handler_ctx*)ctx;
   
-  /* Hard coded attributes of root directory of mount */
+  /* Hard coded attributes for root directory of mount */
   if (request->obj_id == ROOT_DIR_ID) {
     reply->obj_attr.st_dev = 0;
     reply->obj_attr.st_ino = ROOT_DIR_INO;
