@@ -418,9 +418,9 @@ int main(int argc, char** argv) {
    write to read only target, portal opens target file in read only mode.
    */
   mode_t portal_mode;
-  if (strncmp(argv[1], "read", 4) == 0) {
+  if (strcmp(argv[1], "read") == 0) {
     portal_mode = O_WRONLY;
-  } else if (strncmp(argv[1], "write", 5) == 0) {
+  } else if (strcmp(argv[1], "write") == 0) {
     portal_mode = O_RDONLY;
   } else {
     printf("invalid portal mode %s \n", argv[1]);
