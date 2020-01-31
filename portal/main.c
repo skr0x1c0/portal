@@ -406,7 +406,7 @@ int main(int argc, char** argv) {
   char id[NAME_MAX] = "XXXXXX";
   if (mktemp(id) == NULL) {
     printf("cannot create id, error: %d \n", errno);
-    goto done;
+    return errno;
   }
   
   char temp_dir[PATH_MAX];
@@ -436,8 +436,8 @@ int main(int argc, char** argv) {
   /* Open fd to target file. This fd will be passed to kext to get elevated access to target file */
   args.handler_ctx.target_fd = open(args.handler_ctx.target, portal_mode);
   if (args.handler_ctx.target_fd < 0) {
-    printf("cannot open destination as readonly, error %d \n", errno);
-    goto done;
+    printf("cannot open destination with mode %d, error: %d \n", portal_mode, errno);
+    return errno;
   }
   
   /* Path to unix domain socket file */
@@ -542,17 +542,11 @@ int main(int argc, char** argv) {
   
   printf("done \n");
   
+done:
   if (unmount(mnt_dir, MNT_FORCE) != 0) {
     printf("cannot unmount, error: %d \n", errno);
-    goto done;
   }
   
-  if (pthread_join(listen_thread_id, NULL) != 0) {
-    printf("cannot join listen thread, error: %d \n", errno);
-    goto done;
-  }
-  
-done:
   if (remove(mnt_dir) != 0) {
     printf("cannot remove mount directory %s, error: %d \n", mnt_dir, errno);
   }
