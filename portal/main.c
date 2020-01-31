@@ -38,7 +38,7 @@ To copy payload.txt to readonly file protected.txt in $HOME directory \n \
 To copy from writeonly file confidental_log.txt to log.txt in $HOME directory \n\
   portal read ~/confidential_log.txt ~/log.txt \n\
 \n\
-Portal needs to open file descriptor to target file. So it requires atleast read or write permission to target file\n\
+Portal needs to get file descriptor of target file. So it requires atleast read or write permission to target file\n\
 "
 
 /*
