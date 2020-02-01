@@ -35,6 +35,14 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F62E141323E5CBCE00139377 /* exploit_zprofile.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = exploit_zprofile.sh; sourceTree = "<group>"; };
+		F62E141523E5D00C00139377 /* exploit_zprofile_payload */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = exploit_zprofile_payload; sourceTree = "<group>"; };
+		F62E141623E5D08400139377 /* exploit_launchd.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = exploit_launchd.sh; sourceTree = "<group>"; };
+		F63AB67723E602E700CA17A8 /* exploit_periodic.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = exploit_periodic.sh; sourceTree = "<group>"; };
+		F63AB67823E6036200CA17A8 /* exploit_periodic_payload */ = {isa = PBXFileReference; lastKnownFileType = text; path = exploit_periodic_payload; sourceTree = "<group>"; };
+		F63AB67923E604C200CA17A8 /* restore_zprofile.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = restore_zprofile.sh; sourceTree = "<group>"; };
+		F63AB67A23E6053E00CA17A8 /* restore_launchd.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = restore_launchd.sh; sourceTree = "<group>"; };
+		F63AB67B23E605C900CA17A8 /* restore_periodic.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = restore_periodic.sh; sourceTree = "<group>"; };
 		F64409FE23DF3ECC007FA943 /* inspector */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = inspector; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6440A0123DF3ECC007FA943 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		F6440A0D23DF4012007FA943 /* webdav.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = webdav.h; sourceTree = "<group>"; };
@@ -64,6 +72,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		F62E141423E5CFC000139377 /* poc */ = {
+			isa = PBXGroup;
+			children = (
+				F62E141523E5D00C00139377 /* exploit_zprofile_payload */,
+				F62E141323E5CBCE00139377 /* exploit_zprofile.sh */,
+				F62E141623E5D08400139377 /* exploit_launchd.sh */,
+				F63AB67723E602E700CA17A8 /* exploit_periodic.sh */,
+				F63AB67823E6036200CA17A8 /* exploit_periodic_payload */,
+				F63AB67923E604C200CA17A8 /* restore_zprofile.sh */,
+				F63AB67A23E6053E00CA17A8 /* restore_launchd.sh */,
+				F63AB67B23E605C900CA17A8 /* restore_periodic.sh */,
+			);
+			path = poc;
+			sourceTree = "<group>";
+		};
 		F64409F523DF3ECC007FA943 = {
 			isa = PBXGroup;
 			children = (
@@ -71,6 +94,7 @@
 				F6440A2523DF549A007FA943 /* portal */,
 				F6440A0023DF3ECC007FA943 /* inspector */,
 				F6440A1123DF4E89007FA943 /* webdav */,
+				F62E141423E5CFC000139377 /* poc */,
 				F64409FF23DF3ECC007FA943 /* Products */,
 			);
 			sourceTree = "<group>";
