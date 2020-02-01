@@ -1,6 +1,6 @@
 # Title
 
-A malicious application can bypass read only or write only restriction enforced on a file by file system
+Vulnerability in WebDAV kernel extension may allow a malicious application to bypass read only or write only restriction enforced on a file by file system
 
 # Summary
 
@@ -22,11 +22,11 @@ This lack of validation can be exploited by a malicious application to bypass re
 
 3. Malicious application can access confidential data from read protected files - See POC #6
 
-4. Code execution in kernel context by replacing current version of kernel extension with old vulnerable version - See POC #5
+4. Might be possible to do code execution in kernel context by replacing current version of kernel extension with old vulnerable version
 
 # Exploitability
 
-For this exploit to work, the fake WebDAV agent should be able to get file descriptor to target file by executing `open` syscall. This introduces certain limitations
+For this exploit to work, the fake WebDAV agent should be able to open file descriptor to target file by executing `open` syscall. This introduces certain limitations
 
 ##### To write data to target file
 
@@ -42,7 +42,7 @@ For this exploit to work, the fake WebDAV agent should be able to get file descr
 
 # Demo
 
-### Overwrite read only file
+##### Overwrite read only file
 
 The following steps will demonstrate writing on a protected file `secure.txt` by an unauthorized user
 
@@ -89,7 +89,7 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    
    Running above command will output `Tampered!`
 
-### Read write only file
+##### Read write only file
 
 1. Create a file named `secure_log.txt` in `HOME` directory
    
@@ -163,12 +163,12 @@ Consider a WebDAV mount at `/Volumes/localhost`. Let the mount contains a file `
    ```c
    struct node_entry
    {
-   /* the utf8 name */
-   char *name;
-   ...
-   /* the cache file's file descriptor or -1 if none */
-   int file_fd;
-   ...
+     /* the utf8 name */
+     char *name;
+     ...
+     /* the cache file's file descriptor or -1 if none */
+     int file_fd;
+     ...
    };
    ```
    
