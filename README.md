@@ -45,7 +45,6 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
 1. Create a file named `secure.txt` with content `Do not tamper`
    
    ```bash
-   touch ~/secure.txt
    echo 'Do not tamper' > ~/secure.txt
    ```
 
@@ -67,7 +66,6 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
 4. Create a file named `payload.txt` in home directory with content `Tampered!`
    
    ```bash
-   touch ~/payload.txt
    echo 'Tampered!' > ~/payload.txt
    ```
 
@@ -134,23 +132,17 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
 1. Create a file named `secure_log.txt` in `HOME` directory
    
    ```bash
-   touch ~/secure_log.txt
+   echo 'confidential' >> ~/secure_log.txt
    ```
 
 2. Make it read protected
    
    ```bash
    sudo chown root:wheel ~/secure_log.txt
-   sudo chmod 622 ~/secure_log.txt
+   sudo chmod 622 ~/secure_log.txts
    ```
 
-3. Add some data to log
-   
-   ```bash
-   echo 'confidential' >> ~/secure_log.txt
-   ```
-
-4. Verify user cannot read `secure_log.txt`
+3. Verify user cannot read `secure_log.txt`
    
    ```bash
    cat ~/secure_log.txt
@@ -158,13 +150,13 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    
    Above command will fail with `Permission denied`
 
-5. Use portal to read data from `secure_log.txt` to `capture.txt`
+4. Use portal to read data from `secure_log.txt` to `capture.txt`
    
    ```bash
    ./portal read ~/secure_log.txt ~/capture.txt
    ```
 
-6. Verify if read succeeded
+5. Verify if read succeeded
    
    ```bash
    cat ~/capture.txt
