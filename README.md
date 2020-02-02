@@ -174,7 +174,7 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
 
 # Working
 
-The following example explains how a malicious app can exploit the vulnerability to overwrite a read only file, lets say `/etc/zprofile`. 
+The following example explains how a malicious app can exploit the vulnerability to overwrite a read only file, lets say `/etc/zprofile`. In this example, target file is `/etc/zprofile`, a file restricted with read only access which the malicious app wants to bypass. Mount directory is `/tmp/.portal/mount`, which is the directory where WebDAV mount will be created. Portal file is `/tmp/.portal/mount/portal`, which is a file inside WebDAV mount whose associated cache file is `/etc/zprofile`. The process followed by malicious app is as follows:
 
 1. Malicious app start a fake WebDAV agent. Fake agent creates and listen on a unix domain socket, at say `/tmp/.portal/socket`
 
@@ -204,7 +204,7 @@ The following example explains how a malicious app can exploit the vulnerability
    mount("webdav", "/tmp/.portal/mount", MNT_ASYNC | MNT_LOCAL | MNT_UNION, &args);
    ```
 
-3. Malicious app then opens `/tmp/.portal/mount/portal` file inside WebDAV FS for writing by making `open` syscall. 
+3. Malicious app then opens a file inside WebDAV mount for writing. For this example, lets say the app opens `/tmp/.portal/mount/portal` file inside WebDAV FS for writing by making `open` syscall. This triggers following operations:
    
    1. The kernel will first lookup for file with name `portal` inside root directory by calling `webdav_vnop_lookup` of WebDAV kext implemented at [webdav_vnops.c](). The kext will send following request to fake agent to complete lookup
       
@@ -376,22 +376,22 @@ The following example explains how a malicious app can exploit the vulnerability
      ...
      cachevp = pt->pt_cache_vnode; 
      in_uio = ap->a_uio;
-    
+   
      /* Write data to cache file first */
      VNOP_WRITE(cachevp, in_uio, 0, ap->a_context);
      VATTR_INIT(&vattr);
      VATTR_SET(&vattr, va_data_size, uio_offset(in_uio));
-    
+   
      /* Update size of cache file */
      vnode_setattr(cachevp, &vattr, ap->a_context);
-    
+   
      // send request to agent containing data size and offset
      // fake agent will simple respond success to this request
      ...
    }
    ```
    
-   The WebDAV kext will first write the data to cache file by `VNOP_WRITE` function with pointer to `vnode` of target file. This will write the data to target file even thought the malicious app did not have write access to target file
+   The WebDAV kext will first write the data to cache file by `VNOP_WRITE` function with pointer to `vnode` of target file. This will write the data to target file even thought the malicious app did not have write access to target file.
 
 # References
 
