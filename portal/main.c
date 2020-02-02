@@ -47,12 +47,12 @@ Portal needs to get file descriptor of target file. So it requires atleast read 
  */
 #define TEMP_DIR _PATH_TMP ".portal"
 
-/* Inode of parent of mount root directory */
+/* Inode of parent of root directory */
 #define ROOT_DIR_PARENT_INO WEBDAV_ROOTPARENTFILEID
 
-/* Opaque ID of mount root directory */
+/* Opaque ID of root directory */
 #define ROOT_DIR_ID CreateOpaqueID(1, 1)
-/* Inode of mount root directory */
+/* Inode of root directory */
 #define ROOT_DIR_INO WEBDAV_ROOTFILEID
 
 /* Name of portal file inside webdav mount */

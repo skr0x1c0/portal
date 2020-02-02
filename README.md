@@ -1,44 +1,42 @@
 # Title
 
-Lack of validation in WebDAV kernel extension when handling sysctl requests for associating cache files may allow a malicious application to bypass read only or write only restriction enforced on a file by file system
+Bypass read only or write only restriction on a file by associating it as a cache file in WebDAV kernel extension
 
 # Summary
 
-WebDAV (Web-based Distributed Authoring and Versioning) protocol allows users to collaboratively edit and manage files on remote web servers [[ref]](http://www.webdav.org). MacOS can connect to WebDAV servers and mount the files shared on the server as a disk / volume [[ref]](https://support.apple.com/en-in/guide/mac-help/mchlp1546/mac). This functionality is mainly provided by WebDAV kernel extension (kext) and WebDAV agent (a process running in userland). 
+WebDAV (Web-based Distributed Authoring and Versioning) protocol allows users to collaboratively edit and manage files on remote web servers [[ref]](http://www.webdav.org). MacOS can connect to WebDAV servers and mount the files shared on the server as a disk / volume [[ref]](https://support.apple.com/en-in/guide/mac-help/mchlp1546/mac). This functionality is mainly provided by WebDAV kernel extension (kext) and WebDAV agent (a process running in userland) [[ref]](). 
 
-When a file in WebDAV mount is opened, a cache file is associated to that file. This cache file is created by the agent process. Agent process calls `sysctl` syscall with file descriptor of opened cache file to associate a cache file with a file in WebDAV mount. The `sysctl` syscall is handled by function `webdav_sysctl` implemented [here](https://todo) in kext. The current implementation directly associates the `vnode` pointer of received file descriptor to the file in WebDAV mount, without validating whether the received file descriptor of cache file is authorized for read and write operation. When writing data to a file in WebDAV mount, the data is first written to cache file by kext. The data is then read by agent and send to WebDAV server.
+When a file in WebDAV mount is opened, a cache file is associated to that file. This cache file is created by the agent process. Agent process calls `sysctl` syscall with file descriptor of opened cache file to associate a cache file with a file in WebDAV mount. The `sysctl` syscall is handled by function `webdav_sysctl` implemented at [webdav_vfsops.c](https://todo) in kext. The current implementation directly associates the `vnode` pointer of received file descriptor as cache to the file in WebDAV mount, without validating whether the received file descriptor is authorized for read and write operation. This allows the WebDAV kext to read and write data to cache file even if it received a file descriptor which is unauthorized to perform read / write. When writing data to a file in WebDAV mount, the data is first written to cache file by kext. The data is then read by agent and send to WebDAV server.
 
-This lack of validation can be exploited by a malicious application to bypass read only or write only restriction enforced on a file by file system by making the WebDAV kext to do the task for it. For example to bypass read only restriction on `protected.txt` file, the malicious application will create a fake WebDAV agent. The fake agent will then create a WebDAV mount by calling `mount` syscall with appropriate arguments. The arguments will include the address of socket to which the kext should connect to. In this case the kext will be connecting to unix domain socket served by the fake agent. Lets say the fake agent creates the mount at `/Volumes/localhost`. The fake agent will then craft responses to kext is such a way that the target file `protected.txt` will be associated as cache file of a file inside mount, lets say`/Volumes/localhost/portal`. Kext will write the data written to `/Volumes/localhost/portal` to the associated cache file `protected.txt`.  Now the malicious application can write to the unrestricted file `/Volumes/localhost/portal` to write data to read only restricted `protected.txt`, bypassing file system permission restrictions.
+This lack of validation can be exploited by a malicious application to bypass read only or write only restriction enforced on a file by file system by making the WebDAV kext to do the task for it. For example to bypass read only restriction on `protected.txt` file, the malicious application will create a fake WebDAV agent. The fake agent will then create a WebDAV mount by calling `mount` syscall with appropriate arguments. The arguments will include the address of socket to which the kext should connect to. In this case the kext will be connecting to unix domain socket served by the fake agent. Lets say the fake agent creates the mount at `/Volumes/localhost`. The fake agent will then craft responses to kext is such a way that the target file `protected.txt` will be associated as cache file of a file inside mount, lets say`/Volumes/localhost/portal`. Kext will write the data written to `/Volumes/localhost/portal` to the associated cache file `protected.txt`.  Now the malicious application can write to the unrestricted file `/Volumes/localhost/portal` to write data to read only restricted `protected.txt`, bypassing file system permission restrictions. Similary strategy may be used for reading write only restricted files.
 
 # Exploitability
 
-For this exploit to work, the fake WebDAV agent should be able to open file descriptor to target file by executing `open` syscall. This introduces certain limitations
+##### Requirements to write data to target file
 
-##### To write data to target file
+1. Target file should not be protected by System Integrity Protection (SIP)
 
-1. Target file should exist
+2. Target file should exist (can be bypassed by acquiring root privilege)
 
-2. Running user shoud have read permission to target file
+3. Running user shoud have read permission to target file (can be bypassed by acquiring root privilege)
 
-3. Target file should not be protected by System Integrity Protection (SIP)
+##### Requirements to read data from target file
 
-##### To read data from target file
-
-1. Running user should have write permission to target file
-
-**Note:** Except SIP, other limitations can be circumvented by acquiring root priveleges. See POC #1 and #2 for acquiring root privilege using this exploit
+1. Running user should have write permission to target file (can be bypassed by acquiring root privilege)
 
 # Impact
 
-1. This exploit can be used to achieve privilege escalation and run commands in root user context. See demo [#1](#replacing-periodic-tasks) and [#2](#replacing-periodic-tasks)
+1. This exploit can be used to achieve privilege escalation and run commands with root user previleges - see demo [#1](#replacing-periodic-tasks) and [#2](#replacing-periodic-tasks). This may be used by malicious applications or unauthorized (standard) users to execute commands with root previleges
 
-2. Malicious actors like ransomware may exploit this vulnerability to tamper read only files without running as root - See [demo](#overwrite-read-only-file)
+2. Malicious actors like ransomware may exploit this vulnerability to tamper read only files without running as root - see [demo](#overwrite-read-only-file)
 
-3. Malicious application can access confidential data from read protected files without running as root - See [demo](#read-write-only-file)
+3. Malicious application can access confidential data from read protected files without running as root - see [demo](#read-write-only-file)
 
 4. Theoretically possible to do code execution in kernel context by replacing current version of a kernel extension with old vulnerable version which is not blacklisted in `AppleKextExcludeList.kext`
 
 # Demo
+
+Scripts and binaries used for demo are present in `poc.zip`
 
 ##### Overwrite read only file
 
@@ -54,7 +52,7 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
 2. Set the owner of `secure.txt` to *root*. Set the file permission such that only root has write permission. Others users can only read the file
    
    ```bash
-   sudo chown root ~/secure.txt
+   sudo chown root:wheel ~/secure.txt
    sudo chmod 644 ~/secure.txt
    ```
 
@@ -73,7 +71,7 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    echo 'Tampered!' > ~/payload.txt
    ```
 
-5. Overwrite contents of `secure.txt` with contents of `payload.txt` by running portal. Assuming you downloaded `portal` executable from mail attachment to current directory
+5. Overwrite contents of `secure.txt` with contents of `payload.txt` by running `portal` binary in `poc.zip` file.
    
    ```bash
    ./portal write ~/secure.txt ~/payload.txt
@@ -89,8 +87,6 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
 
 ##### Acquiring root privelege
 
-Scripts used below are available at `poc` directory.
-
 ###### Replacing periodic tasks
 
 1. Deploy payload `exploit_periodic_payload` by running
@@ -99,7 +95,7 @@ Scripts used below are available at `poc` directory.
    bash ./exploit_periodic.sh
    ```
    
-   Note: This script will replace `/etc/periodic/daily/110.clean-tmps` with modified `exploit_periodic_payload` file which will execute command `echo "executing as $EUID" > /tmp/exploit_periodic.txt` when daily periodic tasks are run
+   **Note:** This script will replace `/etc/periodic/daily/110.clean-tmps` with modified `exploit_periodic_payload` file, which will execute command `echo "executing as $EUID" > /tmp/exploit_periodic.txt` when daily periodic tasks are run
 
 2. Daily periodic tasks are run at predefined schedule. To trigger them immediatly for demo, run
    
@@ -109,7 +105,7 @@ Scripts used below are available at `poc` directory.
    
    This will create `/tmp/exploit_periodic.txt` containing text`executing as 0` showing that the modified payload was run as root.
 
-3. To restore original `/etc/periodic/daily/110.clean-tmps` run
+3. *Optional:* To restore original `/etc/periodic/daily/110.clean-tmps` run
    
    ```bash
    bash ./restore_periodic.sh
@@ -127,7 +123,7 @@ Scripts used below are available at `poc` directory.
 
 2. Restart system to run the modified launch daemon plist.  File `/tmp/exploit_launchd.txt` will be created with content `0` 
 
-3. To restore original launch daemon plist, run
+3. *Optional:* To restore original launch daemon plist, run
    
    ```bash
    bash ./restore_launchd.sh
@@ -178,11 +174,11 @@ Scripts used below are available at `poc` directory.
 
 # Working
 
-The following example explains how a malicious app can exploit the before mentioned vulnerability to overwrite a read only file, lets say `/etc/zprofile`. 
+The following example explains how a malicious app can exploit the vulnerability to overwrite a read only file, lets say `/etc/zprofile`. 
 
 1. Malicious app start a fake WebDAV agent. Fake agent creates and listen on a unix domain socket, at say `/tmp/.portal/socket`
 
-2. Malicious app then calls `mount` syscall which can be executed in standard user context to mount WebDAV FS.
+2. Malicious app then calls `mount` syscall which can be executed in standard user context to mount WebDAV FS. The WebDAV kext will be connecting to `/tmp/.portal/socket` for performing various IO opertions.
    
    ```c
    /* Opaque ID of mount root directory */
@@ -374,24 +370,24 @@ The following example explains how a malicious app can exploit the before mentio
    ```c
    static int webdav_vnop_write(struct vnop_write_args *ap)
    {
-    struct webdavnode *pt;
-    pt = VTOWEBDAV(ap->a_vp);
-    vp = ap->a_vp;
-    ...
-    cachevp = pt->pt_cache_vnode;
-    in_uio = ap->a_uio;
-   
-    /* Write data to cache file first */
-    VNOP_WRITE(cachevp, in_uio, 0, ap->a_context);
-    VATTR_INIT(&vattr);
-    VATTR_SET(&vattr, va_data_size, uio_offset(in_uio));
-   
-    /* Update size of cache file */
-    vnode_setattr(cachevp, &vattr, ap->a_context);
-   
-    // send request to agent containing data size and offset
-    // fake agent will simple respond success to this request
-    ...
+     struct webdavnode *pt;
+     pt = VTOWEBDAV(ap->a_vp);
+     vp = ap->a_vp;
+     ...
+     cachevp = pt->pt_cache_vnode; 
+     in_uio = ap->a_uio;
+    
+     /* Write data to cache file first */
+     VNOP_WRITE(cachevp, in_uio, 0, ap->a_context);
+     VATTR_INIT(&vattr);
+     VATTR_SET(&vattr, va_data_size, uio_offset(in_uio));
+    
+     /* Update size of cache file */
+     vnode_setattr(cachevp, &vattr, ap->a_context);
+    
+     // send request to agent containing data size and offset
+     // fake agent will simple respond success to this request
+     ...
    }
    ```
    
