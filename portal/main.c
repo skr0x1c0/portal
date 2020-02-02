@@ -392,7 +392,9 @@ int main(int argc, char** argv) {
     return EINVAL;
   }
   
-  char temp_dir[PATH_MAX] = TEMP_DIR;
+  char temp_dir[PATH_MAX];
+  bzero(temp_dir, sizeof(temp_dir));
+  strncpy(temp_dir, TEMP_DIR, sizeof(temp_dir));
   if (mkdtemp(temp_dir) == NULL) {
     printf("cannot create temporary working directory, error: %d \n", errno);
     return errno;
