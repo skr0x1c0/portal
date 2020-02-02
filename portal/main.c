@@ -37,7 +37,7 @@ Portal needs to get file descriptor of target file. So it requires atleast read 
  Temporary directory for storing mount points, caches
  and UDS socket file
  */
-#define TEMP_DIR _PATH_TMP ".portal"
+#define TEMP_DIR _PATH_TMP ".portal.XXXXXX"
 
 /* Inode of parent of root directory */
 #define ROOT_DIR_PARENT_INO WEBDAV_ROOTPARENTFILEID
@@ -392,17 +392,11 @@ int main(int argc, char** argv) {
     return EINVAL;
   }
   
-  /*
-   Temporary files will be stored in TEMP_DIR/id directory
-   */
-  char id[NAME_MAX] = "XXXXXX";
-  if (mktemp(id) == NULL) {
-    printf("cannot create id, error: %d \n", errno);
+  char temp_dir[PATH_MAX] = TEMP_DIR;
+  if (mkdtemp(temp_dir) == NULL) {
+    printf("cannot create temporary working directory, error: %d \n", errno);
     return errno;
   }
-  
-  char temp_dir[PATH_MAX];
-  snprintf(temp_dir, sizeof(temp_dir), "%s/%s", TEMP_DIR, id);
   
   /*
    Portal needs file descriptor of the target file. To read from a
@@ -447,14 +441,7 @@ int main(int argc, char** argv) {
   bzero(mnt_dir, sizeof(mnt_dir));
   snprintf(mnt_dir, sizeof(mnt_dir), "%s/mount", temp_dir);
   
-  /* Setup temporary directory */
-  mkdir(TEMP_DIR, 0700); // Next operation will fail if there is error
-  
-  if (mkdir(temp_dir, 0700) != 0) {
-    printf("cannot create temporary working directory, error: %d \n", errno);
-    goto done;
-  }
-  
+  /* Setup mount directory */
   if (mkdir(mnt_dir, 0700) != 0) {
     printf("cannot create mount directory %s, error: %d \n", mnt_dir, errno);
     goto done;
