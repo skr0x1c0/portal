@@ -1,11 +1,5 @@
 #!/bin/sh
 
-#  restore_launchd.sh
-#  pwndav
-#
-#  Created by Chakra on 02/02/20.
-#  Copyright © 2020 Sreejith Krishnan R. All rights reserved.
-
 TARGET=`find /Library/LaunchDaemons -name "*.plist" -depth 1 -type f -user root -perm -o+r | tail -n 1`
 
 if [ -z "$TARGET" ]; then

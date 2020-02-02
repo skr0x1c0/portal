@@ -1,11 +1,5 @@
 #!/bin/sh
 
-#  restore_periodic.sh
-#  pwndav
-#
-#  Created by Chakra on 02/02/20.
-#  Copyright © 2020 Sreejith Krishnan R. All rights reserved.
-
 BACKUP_NAME='exploit_periodic.backup'
 
 if [ ! -f "./$BACKUP_NAME" ]; then

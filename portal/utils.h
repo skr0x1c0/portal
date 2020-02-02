@@ -1,11 +1,3 @@
-//
-//  utils.h
-//  pwndav
-//
-//  Created by Chakra on 29/01/20.
-//  Copyright © 2020 Sreejith Krishnan R. All rights reserved.
-//
-
 #ifndef utils_h
 #define utils_h
 

@@ -1,11 +1,3 @@
-//
-//  main.c
-//  pwndav
-//
-//  Created by Chakra on 27/01/20.
-//  Copyright © 2020 Sreejith Krishnan R. All rights reserved.
-//
-
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>

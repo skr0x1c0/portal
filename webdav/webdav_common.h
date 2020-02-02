@@ -1,11 +1,3 @@
-//
-//  webdav_common.h
-//  pwndav
-//
-//  Created by Chakra on 27/01/20.
-//  Copyright © 2020 Sreejith Krishnan R. All rights reserved.
-//
-
 #ifndef webdav_common_h
 #define webdav_common_h
 
