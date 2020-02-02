@@ -26,7 +26,7 @@ int cp(const char *to, const char *from)
   if (fd_from < 0)
     return -1;
   
-  fd_to = open(to, O_WRONLY | O_CREAT);
+  fd_to = open(to, O_WRONLY | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH);
   if (fd_to < 0)
     goto out_error;
   
