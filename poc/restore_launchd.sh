@@ -22,7 +22,7 @@ TARGET_NAME=`basename -- $TARGET`
 TARGET_BACKUP=$TARGET_NAME.backup
 
 if [ ! -f "./$TARGET_BACKUP" ]; then
-  echo "[INFO] backup file $TARGET_BACKUP does not exist"
+  echo "[ERROR] backup file $TARGET_BACKUP does not exist"
   exit 1
 fi
 

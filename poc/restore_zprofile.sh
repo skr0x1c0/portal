@@ -9,7 +9,7 @@
 BACKUP_NAME='exploit_zprofile.backup'
 
 if [ ! -f "./$BACKUP_NAME" ]; then
-  echo "[INFO] backup file $BACKUP_NAME does not exist"
+  echo "[ERROR] backup file $BACKUP_NAME does not exist"
   exit 1
 fi
 
