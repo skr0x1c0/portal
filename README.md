@@ -1,32 +1,32 @@
 # Title
 
-Bypass read only or write only restriction on a file by associating it as a cache file in WebDAV kernel extension
+Bypass read only or write only restriction on a file by associating it as a cache file for WebDAV kernel extension
 
 # Summary
 
-WebDAV (Web-based Distributed Authoring and Versioning) protocol allows users to collaboratively edit and manage files on remote web servers [[ref]](http://www.webdav.org). MacOS can connect to WebDAV servers and mount the files shared on the server as a disk / volume [[ref]](https://support.apple.com/en-in/guide/mac-help/mchlp1546/mac). This functionality is mainly provided by WebDAV kernel extension (kext) and WebDAV agent (a process running in userland) [[ref]](). 
+WebDAV (Web-based Distributed Authoring and Versioning) protocol allows users to collaboratively edit and manage files on remote web servers [[ref]](http://www.webdav.org). macOS can connect to WebDAV servers and mount the files shared on the server as a disk / volume. This functionality is mainly provided by WebDAV kernel extension (kext) and WebDAV agent (a process running in userland) [[ref]](https://opensource.apple.com/source/webdavfs/webdavfs-380.200.1/). 
 
-When a file in WebDAV mount is opened, a cache file is associated to that file. This cache file is created by the agent process. Agent process calls `sysctl` syscall with file descriptor of opened cache file to associate a cache file with a file in WebDAV mount. The `sysctl` syscall is handled by function `webdav_sysctl` implemented at [webdav_vfsops.c](https://todo) in kext. The current implementation directly associates the `vnode` pointer of received file descriptor as cache to the file in WebDAV mount, without validating whether the received file descriptor is authorized for read and write operation. This allows the WebDAV kext to read and write data to cache file even if it received a file descriptor which is unauthorized to perform read / write. When writing data to a file in WebDAV mount, the data is first written to cache file by kext. The data is then read by agent and send to WebDAV server.
+When a file in WebDAV mount is opened, a cache file is associated to that file. This cache file is created by the agent process. Agent process calls `sysctl` syscall with file descriptor of opened cache file to associate a cache file with a file in WebDAV mount. The `sysctl` syscall is handled by function `webdav_sysctl` implemented at [webdav_vfsops.c](https://opensource.apple.com/source/webdavfs/webdavfs-380.200.1/webdav_fs.kextproj/webdav_fs.kmodproj/webdav_vfsops.c.auto.html) in kext. The current implementation directly associates the `vnode` pointer of received file descriptor as cache to the file in WebDAV mount, without validating whether the received file descriptor is authorized for read and write operation. This allows the WebDAV kext to read and write data to cache file even if it received a file descriptor which is unauthorized to perform read / write. When writing data to a file in WebDAV mount, the data is first written to cache file by kext. The data is then read by agent and send to WebDAV server.
 
-This lack of validation can be exploited by a malicious application to bypass read only or write only restriction enforced on a file by file system by making the WebDAV kext to do the task for it. For example to bypass read only restriction on `protected.txt` file, the malicious application will create a fake WebDAV agent. The fake agent will then create a WebDAV mount by calling `mount` syscall with appropriate arguments. The arguments will include the address of socket to which the kext should connect to. In this case the kext will be connecting to unix domain socket served by the fake agent. Lets say the fake agent creates the mount at `/Volumes/localhost`. The fake agent will then craft responses to kext is such a way that the target file `protected.txt` will be associated as cache file of a file inside mount, lets say`/Volumes/localhost/portal`. Kext will write the data written to `/Volumes/localhost/portal` to the associated cache file `protected.txt`.  Now the malicious application can write to the unrestricted file `/Volumes/localhost/portal` to write data to read only restricted `protected.txt`, bypassing file system permission restrictions. Similary strategy may be used for reading write only restricted files.
+This lack of validation can be exploited by a malicious application to bypass read only or write only restriction enforced on a file by file system by making the WebDAV kext to do the task for it. For example to bypass read only restriction on `protected.txt` file, the malicious application will create a fake WebDAV agent. The fake agent will then create a WebDAV mount by calling `mount` syscall with appropriate arguments. The arguments will include the address of socket to which the kext should connect to. In this case the kext will be connecting to unix domain socket served by the fake agent. Let's say the fake agent creates the mount at `/Volumes/localhost`. The fake agent will then craft responses to kext is such a way that the target file `protected.txt` will be associated as cache file of a file inside mount, let's say`/Volumes/localhost/portal`. Kext will write the data written to `/Volumes/localhost/portal` to the associated cache file `protected.txt`.  Now the malicious application can write to the unrestricted file `/Volumes/localhost/portal` to write data to read only restricted `protected.txt`, bypassing file system permission restrictions. Similar strategy may be used for reading write only restricted files.
 
 # Exploitability
 
-##### Requirements to write data to target file
+### Requirements to write data to target file
 
 1. Target file should not be protected by System Integrity Protection (SIP)
 
 2. Target file should exist (can be bypassed by acquiring root privilege)
 
-3. Running user shoud have read permission to target file (can be bypassed by acquiring root privilege)
+3. Running user should have read permission to target file (can be bypassed by acquiring root privilege)
 
-##### Requirements to read data from target file
+### Requirements to read data from target file
 
 1. Running user should have write permission to target file (can be bypassed by acquiring root privilege)
 
 # Impact
 
-1. This exploit can be used to achieve privilege escalation and run commands with root user previleges - see demo [#1](#replacing-periodic-tasks) and [#2](#replacing-periodic-tasks). This may be used by malicious applications or unauthorized (standard) users to execute commands with root previleges
+1. This exploit can be used to achieve privilege escalation and run commands with root user privileges - see demo [#1](#replacing-periodic-tasks) and [#2](#replacing-periodic-tasks). This may be used by malicious applications or unauthorised (standard) users to execute commands with root privileges
 
 2. Malicious actors like ransomware may exploit this vulnerability to tamper read only files without running as root - see [demo](#overwrite-read-only-file)
 
@@ -38,9 +38,9 @@ This lack of validation can be exploited by a malicious application to bypass re
 
 Scripts and binaries used for demo are present in `poc.zip`
 
-##### Overwrite read only file
+### Overwrite read only file
 
-The following steps will demonstrate writing on a protected file `secure.txt` by an unauthorized user
+The following steps will demonstrate writing on a protected file `secure.txt` by an unauthorised user
 
 1. Create a file named `secure.txt` with content `Do not tamper`
    
@@ -85,9 +85,9 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    
    Running above command will output `Tampered!`
 
-##### Acquiring root privelege
+### Acquiring root privilege
 
-###### Replacing periodic tasks
+#### Replacing periodic tasks
 
 1. Deploy payload `exploit_periodic_payload` by running
    
@@ -97,7 +97,7 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    
    **Note:** This script will replace `/etc/periodic/daily/110.clean-tmps` with modified `exploit_periodic_payload` file, which will execute command `echo "executing as $EUID" > /tmp/exploit_periodic.txt` when daily periodic tasks are run
 
-2. Daily periodic tasks are run at predefined schedule. To trigger them immediatly for demo, run
+2. Daily periodic tasks are run at predefined schedule. To trigger them immediately for demo, run
    
    ```bash
    sudo periodic daily
@@ -111,9 +111,9 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    bash ./restore_periodic.sh
    ```
 
-###### Replacing launch daemon plist
+#### Replacing launch daemon plist
 
-1. For this exploit to work, atleast one launch daemon plist must be present in `/Library/LaunchDaemons` directory.  Run `exploit_launchd.sh`
+1. For this exploit to work, at-least one launch daemon plist must be present in `/Library/LaunchDaemons` directory.  Run `exploit_launchd.sh`
    
    ```bash
    bash ./exploit_launchd.sh
@@ -129,7 +129,7 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    bash ./restore_launchd.sh
    ```
 
-##### Read write only file
+### Read write only file
 
 1. Create a file named `secure_log.txt` in `HOME` directory
    
@@ -164,7 +164,7 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
    ./portal read ~/secure_log.txt ~/capture.txt
    ```
 
-6. Verify if read succeded
+6. Verify if read succeeded
    
    ```bash
    cat ~/capture.txt
@@ -174,11 +174,11 @@ The following steps will demonstrate writing on a protected file `secure.txt` by
 
 # Working
 
-The following example explains how a malicious app can exploit the vulnerability to overwrite a read only file, lets say `/etc/zprofile`. In this example, target file is `/etc/zprofile`, a file restricted with read only access which the malicious app wants to bypass. Mount directory is `/tmp/.portal/mount`, which is the directory where WebDAV mount will be created. Portal file is `/tmp/.portal/mount/portal`, which is a file inside WebDAV mount whose associated cache file is `/etc/zprofile`. The process followed by malicious app is as follows:
+The following example explains how a malicious app can exploit the vulnerability to overwrite a read only file, let's say `/etc/zprofile`. In this example, target file is `/etc/zprofile`, a file restricted with read only access which the malicious app wants to bypass. Mount directory is `/tmp/.portal/mount`, which is the directory where WebDAV mount will be created. Portal file is `/tmp/.portal/mount/portal`, which is a file inside WebDAV mount whose associated cache file is `/etc/zprofile`. The process followed by malicious app is as follows:
 
 1. Malicious app start a fake WebDAV agent. Fake agent creates and listen on a unix domain socket, at say `/tmp/.portal/socket`
 
-2. Malicious app then calls `mount` syscall which can be executed in standard user context to mount WebDAV FS. The WebDAV kext will be connecting to `/tmp/.portal/socket` for performing various IO opertions.
+2. Malicious app then calls `mount` syscall which can be executed in standard user context to mount WebDAV FS. The WebDAV kext will be connecting to `/tmp/.portal/socket` for performing various IO operations.
    
    ```c
    /* Opaque ID of mount root directory */
@@ -204,9 +204,9 @@ The following example explains how a malicious app can exploit the vulnerability
    mount("webdav", "/tmp/.portal/mount", MNT_ASYNC | MNT_LOCAL | MNT_UNION, &args);
    ```
 
-3. Malicious app then opens a file inside WebDAV mount for writing. For this example, lets say the app opens `/tmp/.portal/mount/portal` file inside WebDAV FS for writing by making `open` syscall. This triggers following operations:
+3. Malicious app then opens a file inside WebDAV mount for writing. For this example, let's say the app opens `/tmp/.portal/mount/portal` file inside WebDAV FS for writing by making `open` syscall. This triggers following operations:
    
-   1. The kernel will first lookup for file with name `portal` inside root directory by calling `webdav_vnop_lookup` of WebDAV kext implemented at [webdav_vnops.c](). The kext will send following request to fake agent to complete lookup
+   1. The kernel will first lookup for file with name `portal` inside root directory by calling `webdav_vnop_lookup` of WebDAV kext implemented at [webdav_vnops.c](https://opensource.apple.com/source/webdavfs/webdavfs-380.200.1/webdav_fs.kextproj/webdav_fs.kmodproj/webdav_vnops.c.auto.html). The kext will send following request to fake agent to complete lookup
       
       ```c
       struct webdav_request_lookup request;
@@ -240,7 +240,7 @@ The following example explains how a malicious app can exploit the vulnerability
       
       WebDAV kext will use this response to send lookup response to kernel
    
-   3. The kernel will then open the `portal` file by calling `webdav_vnop_open` of WebDAV kext implemented at [webdav_vnops.c](). WebDAV kext will send `open` request to WebDAV agent with following data
+   3. The kernel will then open the `portal` file by calling `webdav_vnop_open` of WebDAV kext implemented at [webdav_vnops.c](https://opensource.apple.com/source/webdavfs/webdavfs-380.200.1/webdav_fs.kextproj/webdav_fs.kmodproj/webdav_vnops.c.auto.html). WebDAV kext will send `open` request to WebDAV agent with following data
       
       ```c
       struct webdav_request_open request;
@@ -282,7 +282,7 @@ The following example explains how a malicious app can exploit the vulnerability
       sysctl(mib, 5, NULL, NULL, NULL, 0)
       ```
    
-   5. Kernel upon receiving this `sysctl` syscall will use `mib[0]` and `mib[1]` to route the request to `webdav_sysctl` function implemented in [webdav_vfsops.c]()
+   5. Kernel upon receiving this `sysctl` syscall will use `mib[0]` and `mib[1]` to route the request to `webdav_sysctl` function implemented in [webdav_vfsops.c](https://opensource.apple.com/source/webdavfs/webdavfs-380.200.1/webdav_fs.kextproj/webdav_fs.kmodproj/webdav_vfsops.c.auto.html)
       
       ```c
       static int webdav_sysctl(int *name, u_int namelen, user_addr_t oldp, size_t *oldlenp, user_addr_t newp, size_t newlen, vfs_context_t context)
@@ -319,7 +319,7 @@ The following example explains how a malicious app can exploit the vulnerability
       }
       ```
       
-      Since there is no validation to make sure that the file descriptor of cache file, `fd` is authorized for read and write, sending the read only file descriptor to target file will be accepted.
+      Since there is no validation to make sure that the file descriptor of cache file, `fd` is authorised for read and write, sending the read only file descriptor of target file will be accepted.
    
    6. The WebDAV agent then sends response to kext with following data
       
@@ -365,7 +365,7 @@ The following example explains how a malicious app can exploit the vulnerability
       ...
       ```
 
-4. Now the malicious app have file descriptor to `portal` file with read and write capability. When the malicious app writes data to `portal` file, the kernel will call the `webdav_vnop_write` function in WebDAV kext implemented in [webdav_nvops.c]()
+4. Now the malicious app have file descriptor to `portal` file with read and write capability. When the malicious app writes data to `portal` file, the kernel will call the `webdav_vnop_write` function in WebDAV kext implemented in [webdav_vnops.c](https://opensource.apple.com/source/webdavfs/webdavfs-380.200.1/webdav_fs.kextproj/webdav_fs.kmodproj/webdav_vnops.c.auto.html)
    
    ```c
    static int webdav_vnop_write(struct vnop_write_args *ap)
@@ -391,8 +391,9 @@ The following example explains how a malicious app can exploit the vulnerability
    }
    ```
    
-   The WebDAV kext will first write the data to cache file by `VNOP_WRITE` function with pointer to `vnode` of target file. This will write the data to target file even thought the malicious app did not have write access to target file.
+   The WebDAV kext will first write the data to cache file by `VNOP_WRITE` function with pointer to `vnode` of target file. This will write the data to target file even though the malicious app did not have write access to target file.
 
 # References
 
 1. [WebDAV.org](http://www.webdav.org)
+2. [WebdavFS-380.200.1 source code](https://opensource.apple.com/source/webdavfs/webdavfs-380.200.1/)
