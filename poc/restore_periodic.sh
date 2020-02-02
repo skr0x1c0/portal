@@ -9,12 +9,12 @@
 BACKUP_NAME='exploit_periodic.backup'
 
 if [ ! -f "./$BACKUP_NAME" ]; then
-  echo "[INFO] backup file $BACKUP_NAME does not exist"
+  echo "[ERROR] backup file $BACKUP_NAME does not exist"
   exit 1
 fi
 
-echo "[INFO] restoring zprofile"
+echo "[INFO] restoring 110.clean-tmps"
 ./portal write /etc/periodic/daily/110.clean-tmps ./$BACKUP_NAME
-echo "[INFO] zprofile restored"
+echo "[INFO] 110.clean-tmps restored"
 
 rm -f ./$BACKUP_NAME
